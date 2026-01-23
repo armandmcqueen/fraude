@@ -32,6 +32,13 @@ This project uses a file-based TODO system in the `todo/` directory.
 - None
 ```
 
+## Documentation Requirements
+
+**Always update documentation when making changes.** This includes:
+- `DESIGN.md` - Update when adding new architectural components or changing design decisions
+- `IMPLEMENTATION.md` - Update when adding new files, changing data flow, or modifying types
+- `todo/TODO.md` - Update task status and add completed items with dates
+
 ## Project Structure
 - `DESIGN.md` - Stable architecture and design decisions
 - `IMPLEMENTATION.md` - Implementation details (will evolve)

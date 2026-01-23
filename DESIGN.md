@@ -29,82 +29,155 @@ Fraude is a chat application that provides a conversational interface to Claude.
 
 ## Architecture
 
+The architecture separates UI (React) from business logic (plain TypeScript services) to enable testing without the UI.
+
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        UI Layer                             │
-│  ┌─────────────────┐  ┌──────────────────────────────────┐  │
-│  │ ConversationList│  │          ChatView                │  │
-│  │                 │  │  ┌────────────────────────────┐  │  │
-│  │  - New Chat     │  │  │      MessageList           │  │  │
-│  │  - Conv 1       │  │  │  - Message (user)          │  │  │
-│  │  - Conv 2       │  │  │  - Message (assistant)     │  │  │
-│  │  - Conv 3       │  │  │  - ...                     │  │  │
-│  │                 │  │  └────────────────────────────┘  │  │
-│  │                 │  │  ┌────────────────────────────┐  │  │
-│  │                 │  │  │      InputArea             │  │  │
-│  │                 │  │  │  - ModelSelector           │  │  │
-│  │                 │  │  │  - TextInput               │  │  │
-│  │                 │  │  │  - SendButton              │  │  │
-│  │                 │  │  └────────────────────────────┘  │  │
-│  └─────────────────┘  └──────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        UI Layer (React)                         │
+│  Components: Sidebar, ChatView, InputArea, MessageList          │
+│  Hooks: useChat, useConversations (thin wrappers over services) │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ calls methods, subscribes to events
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Service Layer (Plain TS)                   │
+│                                                                 │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │   ChatSession   │  │  TitleService   │  │ RecordingService│  │
+│  │                 │  │                 │  │                 │  │
+│  │ - conversation  │  │ - generate()    │  │ - record()      │  │
+│  │ - sendMessage() │  └────────┬────────┘  │ - getRecords()  │  │
+│  │ - loadConv()    │           │           └────────┬────────┘  │
+│  └────────┬────────┘           │                    │           │
+│           │                    │                    │           │
+│           ▼                    ▼                    ▼           │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    LLMClient (interface)                 │   │
+│  │  streamChat(convId, messages, systemPrompt, options)     │   │
+│  │  complete(convId, systemPrompt, userPrompt, options)     │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                 StorageClient (interface)                │   │
+│  │  listConversations() / getConversation(id)               │   │
+│  │  saveConversation(conv)                                  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Service Layer                          │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
-│  │   LLMProvider   │  │ StorageProvider │  │PromptProvider│ │
-│  │                 │  │                 │  │             │  │
-│  │  streamMessage()│  │  list()         │  │ getSystem() │  │
-│  │  getModels()    │  │  get/save/update│  │             │  │
-│  └────────┬────────┘  └────────┬────────┘  └─────────────┘  │
-└───────────┼─────────────────────┼───────────────────────────┘
-            │                     │
-            ▼                     ▼
-┌─────────────────────┐  ┌─────────────────────┐
-│   Anthropic SDK     │  │   JSON Files        │
-│   (replaceable)     │  │   (replaceable)     │
-└─────────────────────┘  └─────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Implementation Layer                         │
+│                                                                 │
+│  AnthropicLLMClient    APIStorageClient    RecordingLLMClient   │
+│  MockLLMClient         InMemoryStorage     FileRecorder         │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### Key Design Principles
+
+1. **Dependency Injection**: Services receive dependencies via constructor, not imports
+2. **Thin React Hooks**: Hooks subscribe to service events and update React state; no business logic
+3. **Testable Core**: ChatSession, TitleService, etc. can be tested with mock implementations
+4. **Decorator Pattern**: RecordingLLMClient wraps any LLMClient to add recording
 
 ## Core Abstractions
 
-### 1. LLM Provider
+### 1. LLMClient (interface)
 
-Handles communication with the language model.
+Unified interface for all LLM communication. All methods include `conversationId` for recording.
 
 ```typescript
-interface LLMProvider {
-  streamMessage(
+interface LLMClient {
+  // Streaming chat completion
+  streamChat(
+    conversationId: string,
     messages: Message[],
     systemPrompt: string,
     options: LLMOptions
   ): AsyncGenerator<StreamChunk>;
 
+  // Non-streaming completion (for utility tasks)
+  complete(
+    conversationId: string,
+    systemPrompt: string,
+    userPrompt: string,
+    options: LLMOptions
+  ): Promise<string>;
+
   getAvailableModels(): ModelInfo[];
 }
 ```
 
-- Initial: Direct Anthropic SDK calls
-- Future: API route proxy, multiple providers
+Implementations:
+- `AnthropicLLMClient` - Real API calls via @anthropic-ai/sdk
+- `RecordingLLMClient` - Decorator that wraps any LLMClient and records all calls
+- `MockLLMClient` - Returns canned responses for testing
 
-### 2. Storage Provider
+### 2. StorageClient (interface)
 
 Handles conversation persistence.
 
 ```typescript
-interface StorageProvider {
+interface StorageClient {
   listConversations(): Promise<ConversationSummary[]>;
   getConversation(id: string): Promise<Conversation | null>;
-  createConversation(conversation: Conversation): Promise<void>;
-  updateConversation(conversation: Conversation): Promise<void>;
+  saveConversation(conversation: Conversation): Promise<void>;
 }
 ```
 
-- Initial: JSON files via Next.js API routes
-- Future: Database (SQLite, Postgres, etc.)
+Implementations:
+- `APIStorageClient` - Calls /api/storage/* endpoints
+- `InMemoryStorageClient` - For testing without persistence
 
-### 3. Prompt Provider
+### 3. ChatSession (service class)
+
+Core business logic for managing a chat conversation. Holds state, coordinates LLM and storage.
+
+```typescript
+class ChatSession {
+  readonly events: EventEmitter<ChatSessionEvents>;
+
+  constructor(deps: {
+    llmClient: LLMClient;
+    storageClient: StorageClient;
+    titleService: TitleService;
+    promptProvider: PromptProvider;
+  });
+
+  getConversation(): Conversation | null;
+  loadConversation(id: string): Promise<void>;
+  createNewConversation(model?: string): void;
+  sendMessage(content: string): Promise<void>;
+  setModel(model: string): void;
+}
+```
+
+- Emits events (conversationUpdated, streamChunk, error) for UI to subscribe
+- Fully testable with mock dependencies
+
+### 4. TitleService
+
+Generates conversation titles using a fast LLM (Haiku 4.5).
+
+```typescript
+class TitleService {
+  constructor(llmClient: LLMClient);
+  generate(conversationId: string, userMessage: string): Promise<string>;
+}
+```
+
+### 5. RecordingService
+
+Records all LLM calls to disk for debugging and inspection.
+
+```typescript
+class RecordingService {
+  record(call: LLMCallRecord): Promise<void>;
+  getRecords(conversationId: string): Promise<LLMCallRecord[]>;
+}
+```
+
+### 6. PromptProvider (interface)
 
 Retrieves system prompts.
 
@@ -119,7 +192,7 @@ interface PromptProvider {
 
 ## Design Decisions
 
-1. **Conversation titles**: Auto-generated from first message + response (not user-editable)
+1. **Conversation titles**: Auto-generated using LLM (Haiku 4.5) based on initial user message (not user-editable)
 2. **Conversation deletion**: Not supported in initial version
 3. **Error handling**: Inline in the chat pane (errors displayed as message-like elements)
 4. **Keyboard shortcuts**: Enter to send, Shift+Enter for newline (no additional shortcuts)

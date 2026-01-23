@@ -2,6 +2,7 @@ export const config = {
   // LLM - API key hardcoded for now (single user prototype)
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || 'YOUR_API_KEY_HERE',
   defaultModel: 'claude-sonnet-4-5-20250929',
+  utilityModel: 'claude-haiku-4-5-20251001', // Fast model for utility tasks (title generation, etc.)
 
   // Storage
   dataDir: './data/conversations',

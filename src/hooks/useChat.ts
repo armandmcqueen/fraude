@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Message, Conversation, StreamChunk } from '@/types';
-import { generateId, generateTitle } from '@/lib/utils';
+import { generateId } from '@/lib/utils';
 import { config } from '@/lib/config';
 
 interface UseChatOptions {
@@ -142,10 +142,24 @@ export function useChat(options?: UseChatOptions) {
           }
         }
 
-        // Generate title if this is the first message
+        // Generate title using LLM if this is the first message
         let finalTitle = conversation.title;
-        if (isNewConversation && assistantContent) {
-          finalTitle = generateTitle(content, assistantContent);
+        if (isNewConversation) {
+          try {
+            const titleResponse = await fetch('/api/generate-title', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userMessage: content }),
+            });
+            if (titleResponse.ok) {
+              const { title } = await titleResponse.json();
+              finalTitle = title;
+            }
+          } catch {
+            // Fallback to simple title generation
+            const firstLine = content.split(/[.\n]/)[0].trim();
+            finalTitle = firstLine.length <= 50 ? firstLine : firstLine.substring(0, 47) + '...';
+          }
         }
 
         // Save the conversation
