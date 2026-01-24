@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { LLMOptions } from '@/types';
 import { config } from '@/lib/config';
+import { log } from '@/lib/logger';
 
 const anthropic = new Anthropic({
   apiKey: config.anthropicApiKey,
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ content: '' });
   } catch (error) {
-    console.error('Error in complete:', error);
+    log.error('Error in complete:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

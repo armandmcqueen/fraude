@@ -1,5 +1,6 @@
 import { APILLMClient } from './llm';
 import { config } from '@/lib/config';
+import { log } from '@/lib/logger';
 
 /**
  * Service for generating conversation titles using LLM.
@@ -45,7 +46,7 @@ Rules:
 
       return title || 'New conversation';
     } catch (error) {
-      console.error('Failed to generate title:', error);
+      log.error('Failed to generate title:', error);
       // Fallback to simple truncation
       const firstLine = userMessage.split(/[.\n]/)[0].trim();
       if (firstLine.length <= 50) {

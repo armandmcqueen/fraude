@@ -39,8 +39,12 @@ export async function startServer(): Promise<void> {
     };
 
     serverProcess.stdout?.on('data', (data) => {
-      const text = data.toString();
-      console.log('[server]', text.trim());
+      const text = data.toString().trim();
+      // Filter out empty lines and ANSI escape codes
+      const visibleText = text.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').trim();
+      if (visibleText) {
+        console.log('[server]', text);
+      }
       // Next.js prints various ready indicators
       if (
         text.includes('Ready') ||

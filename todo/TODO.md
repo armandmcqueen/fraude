@@ -33,11 +33,11 @@
 - [ ] JSON format for easy inspection and loading into inspector panel
 
 #### Simple Logging Wrapper
-- [ ] Create `src/lib/logger.ts` with thin wrapper around console
+- [x] Create `src/lib/logger.ts` with thin wrapper around console
   - `log.debug()`, `log.info()`, `log.warn()`, `log.error()`
   - Consistent format with timestamps
   - Single place to change behavior later if needed
-- [ ] Replace direct console.log/error calls with logger
+- [x] Replace direct console.log/error calls with logger
 
 ### Testing Strategy
 
@@ -76,6 +76,10 @@
 ---
 
 ## Completed
+
+### 2025-01-24 - Simple Logging Wrapper
+- [x] Create `src/lib/logger.ts` with `log.debug()`, `log.info()`, `log.warn()`, `log.error()`
+- [x] Replace console.error calls in TitleService, chat route, and complete route
 
 ### 2025-01-23 - Test Infrastructure
 - [x] Install and configure Vitest with TypeScript

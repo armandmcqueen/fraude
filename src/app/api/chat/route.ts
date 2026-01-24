@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { Message, LLMOptions } from '@/types';
 import { config } from '@/lib/config';
+import { log } from '@/lib/logger';
 
 const anthropic = new Anthropic({
   apiKey: config.anthropicApiKey,
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
         controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
       } catch (error) {
-        console.error('Chat API error:', error);
+        log.error('Chat API error:', error);
         let errorMessage = 'Unknown error';
         if (error instanceof Error) {
           errorMessage = error.message;

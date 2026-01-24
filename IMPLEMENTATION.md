@@ -41,6 +41,7 @@ fraude/
 │   │
 │   ├── lib/                      # Utilities and config
 │   │   ├── config.ts             # API keys, model IDs, defaults
+│   │   ├── logger.ts             # Logging wrapper (log.debug/info/warn/error)
 │   │   ├── utils.ts              # generateId, etc.
 │   │   └── storage/              # Server-side JSON storage
 │   │
