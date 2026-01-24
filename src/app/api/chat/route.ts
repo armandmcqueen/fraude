@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Message, LLMOptions } from '@/types';
 import { config } from '@/lib/config';
 import { log } from '@/lib/logger';
+import { createCallRecorder } from '@/lib/llm-recorder';
 
 const anthropic = new Anthropic({
   apiKey: config.anthropicApiKey,
@@ -16,7 +17,7 @@ interface ChatRequest {
 }
 
 export async function POST(request: NextRequest) {
-  const { messages, systemPrompt, options }: ChatRequest =
+  const { conversationId, messages, systemPrompt, options }: ChatRequest =
     await request.json();
 
   const anthropicMessages = messages.map((msg) => ({
@@ -24,9 +25,19 @@ export async function POST(request: NextRequest) {
     content: msg.content,
   }));
 
+  const recorder = createCallRecorder(
+    'chat',
+    conversationId,
+    options.model,
+    systemPrompt,
+    anthropicMessages,
+    { maxTokens: options.maxTokens || 4096 }
+  );
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
+      let fullResponse = '';
       try {
         const anthropicStream = anthropic.messages.stream({
           model: options.model,
@@ -40,6 +51,7 @@ export async function POST(request: NextRequest) {
             event.type === 'content_block_delta' &&
             event.delta.type === 'text_delta'
           ) {
+            fullResponse += event.delta.text;
             const chunk = JSON.stringify({
               type: 'text',
               content: event.delta.text,
@@ -49,6 +61,7 @@ export async function POST(request: NextRequest) {
         }
 
         controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
+        recorder.success(fullResponse);
       } catch (error) {
         log.error('Chat API error:', error);
         let errorMessage = 'Unknown error';
@@ -63,6 +76,7 @@ export async function POST(request: NextRequest) {
           error: errorMessage,
         }) + '\n';
         controller.enqueue(encoder.encode(errorChunk));
+        recorder.failure(errorMessage);
       } finally {
         controller.close();
       }

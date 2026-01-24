@@ -41,6 +41,7 @@ fraude/
 │   │
 │   ├── lib/                      # Utilities and config
 │   │   ├── config.ts             # API keys, model IDs, defaults
+│   │   ├── llm-recorder.ts       # Records LLM calls to disk
 │   │   ├── logger.ts             # Logging wrapper (log.debug/info/warn/error)
 │   │   ├── utils.ts              # generateId, etc.
 │   │   └── storage/              # Server-side JSON storage
@@ -54,7 +55,8 @@ fraude/
 │       └── index.ts
 │
 ├── data/
-│   └── conversations/            # JSON conversation storage
+│   ├── conversations/            # JSON conversation storage
+│   └── llm-calls/                # LLM call recordings (per conversation)
 │
 ├── tests/
 │   └── live-llm/                 # Live LLM tests (real API, no UI)
@@ -106,7 +108,30 @@ interface LLMOptions {
   model: string;
   maxTokens?: number;
 }
+
+// LLM Call Recording
+interface LLMCallRecord {
+  id: string;
+  timestamp: string;
+  callType: 'chat' | 'complete';
+  conversationId: string;
+  model: string;
+  systemPrompt: string;
+  messages: Array<{ role: string; content: string }>;
+  options: Record<string, unknown>;
+  response: string | null;
+  latencyMs: number;
+  error: string | null;
+}
 ```
+
+## LLM Call Recording
+
+All LLM API calls are recorded to `data/llm-calls/<conversation-id>/` for debugging.
+
+- **Filename**: `<call-type>-<timestamp>.json` (e.g., `chat-1737561234567.json`)
+- **Recorded on**: Both `/api/chat` and `/api/complete` routes
+- **Includes**: Request details, full response, latency, and any errors
 
 ## Component Props
 
@@ -226,6 +251,7 @@ Vitest with TypeScript support. Configured in `vitest.config.ts`.
 ```bash
 npm run test        # Run all tests
 npm run test:live   # Run live LLM tests only
+npm run clean       # Delete all saved data (conversations, LLM call recordings)
 ```
 
 ### Live LLM Tests

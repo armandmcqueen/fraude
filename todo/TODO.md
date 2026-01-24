@@ -1,8 +1,8 @@
 # Fraude TODO
 
 ## Current Status
-**Phase**: Test infrastructure set up with first live LLM test passing
-**Next up**: Developer tooling (LLM recording, inspector) or more tests
+**Phase**: LLM recording service complete
+**Next up**: LLM call inspector UI or more tests
 
 ---
 
@@ -25,12 +25,12 @@
 - [ ] Add copy-to-clipboard for request/response payloads
 
 #### LLM Recording Service
-- [ ] Create recording at API route level (server-side)
+- [x] Create recording at API route level (server-side)
   - Instrument `/api/chat` and `/api/complete` routes
   - Save to `data/llm-calls/<conversation-id>/` directory
   - Filename: `<call-type>-<timestamp>.json` (e.g., `chat-1737561234567.json`)
   - Record: uuid, timestamp, call type, model, system prompt, messages, options, response, latency, error
-- [ ] JSON format for easy inspection and loading into inspector panel
+- [x] JSON format for easy inspection and loading into inspector panel
 
 #### Simple Logging Wrapper
 - [x] Create `src/lib/logger.ts` with thin wrapper around console
@@ -76,6 +76,11 @@
 ---
 
 ## Completed
+
+### 2025-01-24 - LLM Recording Service
+- [x] Create `src/lib/llm-recorder.ts` with `createCallRecorder()` helper
+- [x] Instrument `/api/chat` and `/api/complete` routes to record all LLM calls
+- [x] Saves to `data/llm-calls/<conversation-id>/<call-type>-<timestamp>.json`
 
 ### 2025-01-24 - Simple Logging Wrapper
 - [x] Create `src/lib/logger.ts` with `log.debug()`, `log.info()`, `log.warn()`, `log.error()`
