@@ -2,24 +2,26 @@
 
 import { useEffect } from 'react';
 import { useChat } from '@/hooks';
+import { ChatSession } from '@/services';
 import { MessageList } from './MessageList';
 import { InputArea } from './InputArea';
 
 interface ChatViewProps {
+  session: ChatSession;
   conversationId: string | null;
   onConversationUpdate?: () => void;
 }
 
-export function ChatView({ conversationId, onConversationUpdate }: ChatViewProps) {
+export function ChatView({ session, conversationId, onConversationUpdate }: ChatViewProps) {
   const {
     conversation,
     isStreaming,
     error,
     loadConversation,
     createNewConversation,
-    sendMessage,
     setModel,
-  } = useChat({ onConversationUpdate });
+    sendMessage,
+  } = useChat(session, { onConversationUpdate });
 
   // Load conversation when ID changes
   useEffect(() => {

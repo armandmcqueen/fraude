@@ -1,6 +1,6 @@
-# Fraude Implementation Plan
+# Fraude Implementation Details
 
-Implementation details for the initial version. This document will evolve as we build.
+Implementation details for the current version.
 
 ## Directory Structure
 
@@ -9,52 +9,51 @@ fraude/
 ├── src/
 │   ├── app/                      # Next.js App Router
 │   │   ├── layout.tsx
-│   │   ├── page.tsx
+│   │   ├── page.tsx              # Main page, creates ChatSession
 │   │   ├── globals.css
 │   │   └── api/
-│   │       ├── chat/             # Chat streaming endpoint
-│   │       ├── generate-title/   # LLM-powered title generation
-│   │       └── storage/          # Storage API routes
+│   │       ├── chat/route.ts     # Streaming chat (Anthropic SDK)
+│   │       ├── complete/route.ts # Non-streaming completion (Anthropic SDK)
+│   │       └── storage/
+│   │           └── conversations/  # CRUD for conversations
 │   │
 │   ├── components/
-│   │   ├── chat/                 # Chat UI components
-│   │   ├── sidebar/              # Sidebar components
-│   │   └── ui/                   # Generic UI components
+│   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector
+│   │   └── sidebar/              # Sidebar, ConversationItem
 │   │
-│   ├── services/                 # Business logic (plain TS, no React)
+│   ├── services/                 # Client-side business logic (plain TS)
 │   │   ├── ChatSession.ts        # Core chat orchestration
 │   │   ├── TitleService.ts       # LLM-powered title generation
-│   │   ├── RecordingService.ts   # LLM call recording to disk
+│   │   ├── types.ts              # EventEmitter, ChatSessionEvents
+│   │   ├── index.ts              # Exports
 │   │   ├── llm/
-│   │   │   ├── types.ts          # LLMClient interface
-│   │   │   ├── AnthropicLLMClient.ts
-│   │   │   ├── RecordingLLMClient.ts  # Decorator
-│   │   │   └── MockLLMClient.ts       # For testing
+│   │   │   ├── APILLMClient.ts   # HTTP client for /api/chat, /api/complete
+│   │   │   └── index.ts
 │   │   ├── storage/
 │   │   │   ├── types.ts          # StorageClient interface
 │   │   │   ├── APIStorageClient.ts
-│   │   │   └── InMemoryStorageClient.ts  # For testing
+│   │   │   ├── InMemoryStorageClient.ts  # For testing
+│   │   │   └── index.ts
 │   │   └── prompt/
 │   │       ├── types.ts          # PromptProvider interface
-│   │       └── DefaultPromptProvider.ts
+│   │       ├── DefaultPromptProvider.ts
+│   │       └── index.ts
 │   │
 │   ├── lib/                      # Utilities and config
-│   │   ├── config.ts
-│   │   ├── utils.ts
-│   │   └── logger.ts             # Simple logging wrapper
+│   │   ├── config.ts             # API keys, model IDs, defaults
+│   │   ├── utils.ts              # generateId, etc.
+│   │   └── storage/              # Server-side JSON storage
 │   │
-│   ├── hooks/                    # Thin React wrappers over services
+│   ├── hooks/                    # Thin React wrappers
 │   │   ├── useChat.ts            # Subscribes to ChatSession events
-│   │   └── useConversations.ts
+│   │   ├── useConversations.ts   # Fetches conversation list
+│   │   └── index.ts
 │   │
-│   └── types/                    # Shared types
+│   └── types/                    # Shared TypeScript types
+│       └── index.ts
 │
 ├── data/
-│   ├── conversations/            # JSON conversation storage
-│   └── llm-calls/                # LLM call recordings
-│       └── <conversation-id>/
-│           ├── chat-<timestamp>.json
-│           └── utility-title-<timestamp>.json
+│   └── conversations/            # JSON conversation storage
 │
 └── ...config files
 ```
@@ -100,60 +99,57 @@ interface LLMOptions {
   model: string;
   maxTokens?: number;
 }
-
-// Model Info
-interface ModelInfo {
-  id: string;
-  name: string;
-}
-
-// Prompt Context
-interface PromptContext {
-  conversationId?: string;
-  model: string;
-}
 ```
 
-## Component Breakdown
+## Component Props
 
 ### ChatView
-- Props: `conversationId: string | null`
-- Loads conversation, coordinates MessageList and InputArea
-- Manages streaming state
+- `session: ChatSession` - The chat session instance
+- `conversationId: string | null` - ID to load, or null for new
+- `onConversationUpdate?: () => void` - Callback when conversation saved
 
 ### MessageList
-- Props: `messages: Message[]`, `isStreaming: boolean`
-- Scrollable container, auto-scroll on new messages
-
-### Message
-- Props: `message: Message`, `isStreaming?: boolean`
-- Renders markdown, highlights code
-- Visual distinction for user vs assistant
+- `messages: Message[]`
+- `isStreaming: boolean`
 
 ### InputArea
-- Props: `onSend`, `disabled`, `model`, `onModelChange`
-- Multi-line input, Enter to send, model selector
+- `onSend: (content: string) => void`
+- `disabled: boolean`
+- `model: string`
+- `onModelChange: (model: string) => void`
 
 ### Sidebar
-- Props: `activeId`, `onSelect`, `onCreate`
-- Lists conversations sorted by updatedAt
+- `conversations: ConversationSummary[]`
+- `activeId: string | null`
+- `onSelect: (id: string | null) => void`
+- `onCreate: () => void`
 
 ## Data Flow
 
 ### Send Message
-1. User submits in InputArea
-2. ChatView creates user Message, adds to state
-3. Creates empty assistant Message
-4. Calls LLM provider stream
-5. Appends chunks to assistant message
-6. On complete:
-   - If first message: call `/api/generate-title` to get LLM-generated title (uses Haiku 4.5)
-   - Save conversation with generated title
+1. User types in InputArea, hits Enter
+2. InputArea calls `onSend(content)`
+3. ChatView calls `session.sendMessage(content)`
+4. ChatSession:
+   - Creates user Message and placeholder assistant Message
+   - Emits `conversationUpdated`
+   - Emits `streamStart`
+   - Calls `llmClient.streamChat()` → HTTP to `/api/chat`
+   - Server calls Anthropic SDK, streams response
+   - For each chunk: updates assistant message, emits `streamChunk`
+   - On complete: if first message, calls `titleService.generate()` → `/api/complete`
+   - Saves via `storageClient.saveConversation()` → `/api/storage`
+   - Emits `streamEnd`
+5. useChat receives events, updates React state
+6. UI re-renders with new messages
 
-### Load Conversations
-1. On mount: fetch conversation list
-2. On select: fetch full conversation
-3. Display in ChatView
+### Load Conversation
+1. User clicks conversation in Sidebar
+2. page.tsx sets `activeConversationId`
+3. ChatView's useEffect calls `session.loadConversation(id)`
+4. ChatSession fetches via `storageClient.getConversation()` → `/api/storage`
+5. Emits `conversationUpdated`
+6. useChat updates state, UI renders messages
 
 ## Available Models
 
@@ -169,15 +165,47 @@ interface PromptContext {
 | claude-3-haiku-20240307 | Claude Haiku 3 |
 
 ### Utility Model (internal)
-| ID | Name | Purpose |
-|----|------|---------|
-| claude-haiku-4-5-20251001 | Claude Haiku 4.5 | Title generation and other utility tasks |
+| ID | Purpose |
+|----|---------|
+| claude-haiku-4-5-20251001 | Title generation |
 
-## Implementation Order
+## API Routes
 
-1. Project setup (Next.js, TypeScript, Tailwind)
-2. Type definitions
-3. Storage provider + API routes
-4. LLM provider
-5. UI components
-6. Integration and polish
+### POST /api/chat
+Request:
+```json
+{
+  "conversationId": "string",
+  "messages": [{ "role": "user", "content": "..." }],
+  "systemPrompt": "string",
+  "options": { "model": "string", "maxTokens": 4096 }
+}
+```
+Response: NDJSON stream of `StreamChunk`
+
+### POST /api/complete
+Request:
+```json
+{
+  "conversationId": "string",
+  "systemPrompt": "string",
+  "userPrompt": "string",
+  "options": { "model": "string", "maxTokens": 1024 }
+}
+```
+Response:
+```json
+{ "content": "string" }
+```
+
+### GET /api/storage/conversations
+Response: `ConversationSummary[]`
+
+### POST /api/storage/conversations
+Request: `Conversation`
+
+### GET /api/storage/conversations/[id]
+Response: `Conversation`
+
+### PUT /api/storage/conversations/[id]
+Request: `Conversation`

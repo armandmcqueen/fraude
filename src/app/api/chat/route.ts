@@ -1,38 +1,59 @@
 import { NextRequest } from 'next/server';
-import { AnthropicProvider } from '@/lib/llm';
-import { DefaultPromptProvider } from '@/lib/prompt';
+import Anthropic from '@anthropic-ai/sdk';
 import { Message, LLMOptions } from '@/types';
+import { config } from '@/lib/config';
 
-const llmProvider = new AnthropicProvider();
-const promptProvider = new DefaultPromptProvider();
+const anthropic = new Anthropic({
+  apiKey: config.anthropicApiKey,
+});
+
+interface ChatRequest {
+  conversationId: string;
+  messages: Message[];
+  systemPrompt: string;
+  options: LLMOptions;
+}
 
 export async function POST(request: NextRequest) {
-  const { messages, options }: { messages: Message[]; options: LLMOptions } =
+  const { messages, systemPrompt, options }: ChatRequest =
     await request.json();
 
-  const systemPrompt = await promptProvider.getSystemPrompt({
-    model: options.model,
-  });
+  const anthropicMessages = messages.map((msg) => ({
+    role: msg.role as 'user' | 'assistant',
+    content: msg.content,
+  }));
 
-  // Create a streaming response
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const chunk of llmProvider.streamMessage(
-          messages,
-          systemPrompt,
-          options
-        )) {
-          const data = JSON.stringify(chunk) + '\n';
-          controller.enqueue(encoder.encode(data));
+        const anthropicStream = anthropic.messages.stream({
+          model: options.model,
+          max_tokens: options.maxTokens || 4096,
+          system: systemPrompt,
+          messages: anthropicMessages,
+        });
+
+        for await (const event of anthropicStream) {
+          if (
+            event.type === 'content_block_delta' &&
+            event.delta.type === 'text_delta'
+          ) {
+            const chunk = JSON.stringify({
+              type: 'text',
+              content: event.delta.text,
+            }) + '\n';
+            controller.enqueue(encoder.encode(chunk));
+          }
         }
+
+        controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
       } catch (error) {
         const errorChunk = JSON.stringify({
           type: 'error',
           error: error instanceof Error ? error.message : 'Unknown error',
-        });
-        controller.enqueue(encoder.encode(errorChunk + '\n'));
+        }) + '\n';
+        controller.enqueue(encoder.encode(errorChunk));
       } finally {
         controller.close();
       }

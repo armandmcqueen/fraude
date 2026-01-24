@@ -4,12 +4,12 @@ A simple, modular AI chat application built on Claude.
 
 ## Overview
 
-Fraude is a chat application that provides a conversational interface to Claude. The initial version is a client-side focused Next.js application with local JSON storage. The architecture prioritizes modularity to enable future enhancements like server-side LLM routing, database storage, and multi-modal capabilities.
+Fraude is a chat application that provides a conversational interface to Claude. The initial version is a client-side focused Next.js application with local JSON storage. The architecture separates client-side business logic from server-side API calls to enable testing without the UI.
 
 ## Goals
 
 - **Simple to start**: Minimal setup, works out of the box
-- **Modular architecture**: Easy to swap storage, LLM providers, and system prompt logic
+- **Testable**: Business logic can be tested without UI by running against the server
 - **Real-time streaming**: Responses stream as they're generated
 - **Conversation management**: Persistent conversations with a sidebar list
 - **Future-ready**: Architecture supports file/image uploads without implementing them now
@@ -23,122 +23,62 @@ Fraude is a chat application that provides a conversational interface to Claude.
 | Styling | Tailwind CSS |
 | Markdown | react-markdown + remark-gfm |
 | Code Highlighting | react-syntax-highlighter (Prism) |
-| LLM SDK | @anthropic-ai/sdk |
+| LLM SDK | @anthropic-ai/sdk (server-side only) |
 | State | React useState/useContext (upgrade to Zustand if needed) |
 | Deployment | Vercel |
 
 ## Architecture
 
-The architecture separates UI (React) from business logic (plain TypeScript services) to enable testing without the UI.
+Clear separation between client-side and server-side code.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        UI Layer (React)                         │
-│  Components: Sidebar, ChatView, InputArea, MessageList          │
-│  Hooks: useChat, useConversations (thin wrappers over services) │
+│                     CLIENT SIDE (Browser)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  UI Layer (React)                                               │
+│    Components: Sidebar, ChatView, InputArea, MessageList        │
+│    Hooks: useChat, useConversations (thin wrappers)             │
+│                              │                                  │
+│                              ▼                                  │
+│  Service Layer (Plain TypeScript)                               │
+│    ChatSession    - orchestrates chat flow                      │
+│    TitleService   - generates titles via LLM                    │
+│    APILLMClient   - HTTP calls to /api/chat, /api/complete      │
+│    APIStorageClient - HTTP calls to /api/storage/*              │
+│    DefaultPromptProvider - returns system prompt                │
 └─────────────────────────────────────────────────────────────────┘
                               │
-                              │ calls methods, subscribes to events
+                              │ HTTP
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Service Layer (Plain TS)                   │
-│                                                                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   ChatSession   │  │  TitleService   │  │ RecordingService│  │
-│  │                 │  │                 │  │                 │  │
-│  │ - conversation  │  │ - generate()    │  │ - record()      │  │
-│  │ - sendMessage() │  └────────┬────────┘  │ - getRecords()  │  │
-│  │ - loadConv()    │           │           └────────┬────────┘  │
-│  └────────┬────────┘           │                    │           │
-│           │                    │                    │           │
-│           ▼                    ▼                    ▼           │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                    LLMClient (interface)                 │   │
-│  │  streamChat(convId, messages, systemPrompt, options)     │   │
-│  │  complete(convId, systemPrompt, userPrompt, options)     │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                 StorageClient (interface)                │   │
-│  │  listConversations() / getConversation(id)               │   │
-│  │  saveConversation(conv)                                  │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Implementation Layer                         │
-│                                                                 │
-│  AnthropicLLMClient    APIStorageClient    RecordingLLMClient   │
-│  MockLLMClient         InMemoryStorage     FileRecorder         │
+│                    SERVER SIDE (Next.js API Routes)             │
+├─────────────────────────────────────────────────────────────────┤
+│  /api/chat          - streaming chat, uses Anthropic SDK        │
+│  /api/complete      - non-streaming completion, uses Anthropic  │
+│  /api/storage/*     - CRUD for conversations, uses JSON files   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Design Principles
 
-1. **Dependency Injection**: Services receive dependencies via constructor, not imports
+1. **Clear client/server boundary**: All Anthropic SDK usage is server-side only
 2. **Thin React Hooks**: Hooks subscribe to service events and update React state; no business logic
-3. **Testable Core**: ChatSession, TitleService, etc. can be tested with mock implementations
-4. **Decorator Pattern**: RecordingLLMClient wraps any LLMClient to add recording
+3. **Testable Core**: ChatSession can be tested by running against the real server (no UI needed)
+4. **Dependency Injection**: Services receive dependencies via constructor
 
-## Core Abstractions
+## Core Components
 
-### 1. LLMClient (interface)
+### Client-Side Services
 
-Unified interface for all LLM communication. All methods include `conversationId` for recording.
-
-```typescript
-interface LLMClient {
-  // Streaming chat completion
-  streamChat(
-    conversationId: string,
-    messages: Message[],
-    systemPrompt: string,
-    options: LLMOptions
-  ): AsyncGenerator<StreamChunk>;
-
-  // Non-streaming completion (for utility tasks)
-  complete(
-    conversationId: string,
-    systemPrompt: string,
-    userPrompt: string,
-    options: LLMOptions
-  ): Promise<string>;
-
-  getAvailableModels(): ModelInfo[];
-}
-```
-
-Implementations:
-- `AnthropicLLMClient` - Real API calls via @anthropic-ai/sdk
-- `RecordingLLMClient` - Decorator that wraps any LLMClient and records all calls
-- `MockLLMClient` - Returns canned responses for testing
-
-### 2. StorageClient (interface)
-
-Handles conversation persistence.
-
-```typescript
-interface StorageClient {
-  listConversations(): Promise<ConversationSummary[]>;
-  getConversation(id: string): Promise<Conversation | null>;
-  saveConversation(conversation: Conversation): Promise<void>;
-}
-```
-
-Implementations:
-- `APIStorageClient` - Calls /api/storage/* endpoints
-- `InMemoryStorageClient` - For testing without persistence
-
-### 3. ChatSession (service class)
-
-Core business logic for managing a chat conversation. Holds state, coordinates LLM and storage.
+#### ChatSession
+Core business logic for managing a chat conversation. Runs in browser.
 
 ```typescript
 class ChatSession {
   readonly events: EventEmitter<ChatSessionEvents>;
 
   constructor(deps: {
-    llmClient: LLMClient;
+    llmClient: APILLMClient;
     storageClient: StorageClient;
     titleService: TitleService;
     promptProvider: PromptProvider;
@@ -152,43 +92,48 @@ class ChatSession {
 }
 ```
 
-- Emits events (conversationUpdated, streamChunk, error) for UI to subscribe
-- Fully testable with mock dependencies
+Emits events (conversationUpdated, streamChunk, streamStart, streamEnd, error) for UI to subscribe.
 
-### 4. TitleService
+#### APILLMClient
+HTTP client for LLM operations. Calls server API routes.
 
+```typescript
+class APILLMClient {
+  streamChat(conversationId, messages, systemPrompt, options): AsyncGenerator<StreamChunk>;
+  complete(conversationId, systemPrompt, userPrompt, options): Promise<string>;
+  getAvailableModels(): ModelInfo[];
+}
+```
+
+#### TitleService
 Generates conversation titles using a fast LLM (Haiku 4.5).
 
 ```typescript
 class TitleService {
-  constructor(llmClient: LLMClient);
+  constructor(llmClient: APILLMClient);
   generate(conversationId: string, userMessage: string): Promise<string>;
 }
 ```
 
-### 5. RecordingService
-
-Records all LLM calls to disk for debugging and inspection.
-
+#### StorageClient (interface)
 ```typescript
-class RecordingService {
-  record(call: LLMCallRecord): Promise<void>;
-  getRecords(conversationId: string): Promise<LLMCallRecord[]>;
+interface StorageClient {
+  listConversations(): Promise<ConversationSummary[]>;
+  getConversation(id: string): Promise<Conversation | null>;
+  saveConversation(conversation: Conversation): Promise<void>;
 }
 ```
 
-### 6. PromptProvider (interface)
+Implementations:
+- `APIStorageClient` - Calls /api/storage/* endpoints (production)
+- `InMemoryStorageClient` - For unit tests without persistence
 
-Retrieves system prompts.
+### Server-Side API Routes
 
-```typescript
-interface PromptProvider {
-  getSystemPrompt(context: PromptContext): Promise<string>;
-}
-```
-
-- Initial: Static string
-- Future: Dynamic prompts based on context, user preferences
+- `/api/chat` - Uses Anthropic SDK directly for streaming chat
+- `/api/complete` - Uses Anthropic SDK directly for non-streaming completions
+- `/api/storage/conversations` - List/create conversations (JSON files)
+- `/api/storage/conversations/[id]` - Get/update specific conversation
 
 ## Design Decisions
 
@@ -197,11 +142,12 @@ interface PromptProvider {
 3. **Error handling**: Inline in the chat pane (errors displayed as message-like elements)
 4. **Keyboard shortcuts**: Enter to send, Shift+Enter for newline (no additional shortcuts)
 5. **UI Layout**: Sidebar (conversation list) + main chat view, desktop only
+6. **Testing model**: Tests run ChatSession against real server, mock at Anthropic SDK level if needed
 
 ## Future Considerations
 
-### Server-side LLM Routing
-Replace direct SDK calls with API route to hide API key, add logging, rate limiting.
+### LLM Call Recording
+Add recording at the API route level to capture all LLM inputs/outputs for debugging.
 
 ### Database Storage
 Replace JSON files with SQLite/Postgres for better querying and scalability.
