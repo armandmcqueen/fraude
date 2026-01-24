@@ -2,6 +2,15 @@
 
 Historical record of completed tasks.
 
+## 2025-01-24 - Live LLM Tests
+
+### Comprehensive Service Tests
+- Tests use real services (ChatSession, APILLMClient, TitleService, etc.) pointed at test server
+- Test APILLMClient streaming responses
+- Test TitleService title generation
+- Test full ChatSession flow: create conversation, send message, verify title generation, verify storage
+- Test multi-turn conversation with context (follow-up questions)
+
 ## 2025-01-24 - Developer Tooling
 
 ### LLM Call Inspector

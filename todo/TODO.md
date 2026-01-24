@@ -21,9 +21,9 @@
 - [ ] Test full chat flow: ChatSession → API routes → mock Anthropic
 - [ ] Test title generation flow
 - [ ] Test conversation CRUD via ChatSession → API routes
+- [ ] Test API errors and timeouts
 
 #### Live LLM Tests (real API, no UI)
-- [ ] Test title generation produces sensible results
 - [ ] Test different models behave as expected
 - [ ] Test error handling with real API errors
 

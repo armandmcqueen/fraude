@@ -270,7 +270,7 @@ npm run clean       # Delete all saved data (conversations, LLM call recordings)
 ```
 
 ### Live LLM Tests
-Tests that run against the real Anthropic API without involving the UI.
+Tests that run against the real Anthropic API using the actual application services.
 
 **Server Utilities** (`tests/live-llm/server-utils.ts`):
 - `startServer()` - Spawns Next.js dev server on port 3939
@@ -278,10 +278,14 @@ Tests that run against the real Anthropic API without involving the UI.
 - `getServerUrl()` - Returns the test server URL
 - `waitForServer()` - Polls until server is healthy
 
-**Test Flow**:
-1. `beforeAll`: Start Next.js server, wait for health check
-2. Test: Make HTTP requests to `/api/chat`, verify streaming response
-3. `afterAll`: Stop server
+**Test Approach**:
+Tests instantiate real services (ChatSession, APILLMClient, TitleService, etc.) configured to point at the test server. This tests the actual application code paths.
+
+**Test Coverage**:
+- `APILLMClient` - streaming responses
+- `TitleService` - title generation
+- `ChatSession` - full conversation flow with events, title generation, storage
+- Multi-turn conversations with context
 
 **Timeouts**:
 - Test timeout: 60s (for LLM response time)
