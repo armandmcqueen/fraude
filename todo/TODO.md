@@ -1,8 +1,8 @@
 # Fraude TODO
 
 ## Current Status
-**Phase**: LLM recording service complete
-**Next up**: LLM call inspector UI or more tests
+**Phase**: Developer tooling complete (logging, recording, inspector)
+**Next up**: Raw message viewer or more tests
 
 ---
 
@@ -17,12 +17,12 @@
 - [ ] Show message metadata (id, timestamp, token count if available)
 
 #### LLM Call Inspector
-- [ ] Create dev panel/drawer to inspect LLM calls
+- [x] Create dev panel/drawer to inspect LLM calls
   - Show request: model, system prompt, messages array, options (max_tokens, etc.)
   - Show response: final assembled content
   - Show timing: request start, completion, total duration
   - Reads from LLM call recordings on disk
-- [ ] Add copy-to-clipboard for request/response payloads
+- [x] Add copy-to-clipboard for request/response payloads
 
 #### LLM Recording Service
 - [x] Create recording at API route level (server-side)
@@ -76,6 +76,13 @@
 ---
 
 ## Completed
+
+### 2025-01-24 - LLM Call Inspector
+- [x] Create `/api/llm-calls` routes to list and fetch recordings
+- [x] Create `LLMInspector` component with call list and detail view
+- [x] Add toggle button in conversation header (conversation-specific filtering)
+- [x] Copy-to-clipboard for system prompt, messages, and response
+- [x] Collapsible sections (User Message & Response expanded by default)
 
 ### 2025-01-24 - LLM Recording Service
 - [x] Create `src/lib/llm-recorder.ts` with `createCallRecorder()` helper

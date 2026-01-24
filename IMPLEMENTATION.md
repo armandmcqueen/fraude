@@ -14,11 +14,13 @@ fraude/
 │   │   └── api/
 │   │       ├── chat/route.ts     # Streaming chat (Anthropic SDK)
 │   │       ├── complete/route.ts # Non-streaming completion (Anthropic SDK)
+│   │       ├── llm-calls/        # LLM call recording inspector API
 │   │       └── storage/
 │   │           └── conversations/  # CRUD for conversations
 │   │
 │   ├── components/
 │   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector
+│   │   ├── inspector/            # LLMInspector (dev panel for viewing LLM calls)
 │   │   └── sidebar/              # Sidebar, ConversationItem
 │   │
 │   ├── services/                 # Client-side business logic (plain TS)
@@ -132,6 +134,19 @@ All LLM API calls are recorded to `data/llm-calls/<conversation-id>/` for debugg
 - **Filename**: `<call-type>-<timestamp>.json` (e.g., `chat-1737561234567.json`)
 - **Recorded on**: Both `/api/chat` and `/api/complete` routes
 - **Includes**: Request details, full response, latency, and any errors
+
+## LLM Call Inspector
+
+A developer tool for inspecting LLM calls, accessible via the button in the conversation header.
+
+- **Conversation-specific**: Only shows calls for the active conversation
+- **Collapsible sections** with smart defaults:
+  - Expanded: User Message, Response
+  - Collapsed: Metadata, System Prompt, Message History, Options
+- **Copy-to-clipboard** for each section
+- **API routes**:
+  - `GET /api/llm-calls` - List all recordings
+  - `GET /api/llm-calls/[conversationId]/[filename]` - Get specific recording
 
 ## Component Props
 
