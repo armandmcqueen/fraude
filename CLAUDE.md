@@ -5,7 +5,8 @@
 This project uses a file-based TODO system in the `todo/` directory.
 
 ### Files
-- `todo/TODO.md` - Main todo list with current status and all tasks
+- `todo/TODO.md` - Active todo list with current status and remaining tasks
+- `todo/DONE.md` - Historical record of completed work
 - `todo/<N>_<name>.md` - Detail files for complex tasks (e.g., `1_setup_nextjs.md`)
 
 ### Workflow
