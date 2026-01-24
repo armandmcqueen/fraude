@@ -1,8 +1,8 @@
 # Fraude TODO
 
 ## Current Status
-**Phase**: Service layer refactoring complete
-**Next up**: Developer tooling (LLM recording, inspector) or Testing infrastructure
+**Phase**: Test infrastructure set up with first live LLM test passing
+**Next up**: Developer tooling (LLM recording, inspector) or more tests
 
 ---
 
@@ -42,9 +42,9 @@
 ### Testing Strategy
 
 #### Test Infrastructure Setup
-- [ ] Choose test runner (Jest vs Vitest) - Vitest likely better for Next.js
-- [ ] Configure test environment for TypeScript
-- [ ] Set up test scripts in package.json
+- [x] Choose test runner (Jest vs Vitest) - Vitest likely better for Next.js
+- [x] Configure test environment for TypeScript
+- [x] Set up test scripts in package.json
 
 #### Unit Tests (no network, no UI)
 - [ ] Test utility functions (`src/lib/utils.ts`)
@@ -59,8 +59,8 @@
 - [ ] Test conversation CRUD via ChatSession → API routes
 
 #### Live LLM Tests (real API, no UI)
-- [ ] Test harness that starts server, runs ChatSession against it
-- [ ] Verify streaming works correctly end-to-end
+- [x] Test harness that starts server, runs ChatSession against it
+- [x] Verify streaming works correctly end-to-end
 - [ ] Test title generation produces sensible results
 - [ ] Test different models behave as expected
 - [ ] Test error handling with real API errors
@@ -76,6 +76,13 @@
 ---
 
 ## Completed
+
+### 2025-01-23 - Test Infrastructure
+- [x] Install and configure Vitest with TypeScript
+- [x] Create `tests/live-llm/server-utils.ts` - Start/stop Next.js server for tests
+- [x] Create `tests/live-llm/chat.test.ts` - First live LLM test
+- [x] Add `npm run test` and `npm run test:live` scripts
+- [x] Verify streaming chat works end-to-end with real LLM
 
 ### 2025-01-22 - Service Layer Refactoring
 - [x] Create `src/services/` directory for client-side business logic

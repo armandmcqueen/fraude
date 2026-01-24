@@ -49,9 +49,17 @@ export async function POST(request: NextRequest) {
 
         controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
       } catch (error) {
+        console.error('Chat API error:', error);
+        let errorMessage = 'Unknown error';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+          if ('cause' in error && error.cause) {
+            errorMessage += ` (cause: ${error.cause})`;
+          }
+        }
         const errorChunk = JSON.stringify({
           type: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
         }) + '\n';
         controller.enqueue(encoder.encode(errorChunk));
       } finally {

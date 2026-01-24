@@ -24,6 +24,7 @@ Fraude is a chat application that provides a conversational interface to Claude.
 | Markdown | react-markdown + remark-gfm |
 | Code Highlighting | react-syntax-highlighter (Prism) |
 | LLM SDK | @anthropic-ai/sdk (server-side only) |
+| Testing | Vitest |
 | State | React useState/useContext (upgrade to Zustand if needed) |
 | Deployment | Vercel |
 
@@ -142,7 +143,7 @@ Implementations:
 3. **Error handling**: Inline in the chat pane (errors displayed as message-like elements)
 4. **Keyboard shortcuts**: Enter to send, Shift+Enter for newline (no additional shortcuts)
 5. **UI Layout**: Sidebar (conversation list) + main chat view, desktop only
-6. **Testing model**: Tests run ChatSession against real server, mock at Anthropic SDK level if needed
+6. **Testing model**: Live LLM tests start a real Next.js server and make HTTP requests (no UI). Vitest as test runner. Mock at Anthropic SDK level for fast/cheap integration tests if needed.
 
 ## Future Considerations
 

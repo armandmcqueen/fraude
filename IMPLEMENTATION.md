@@ -55,6 +55,12 @@ fraude/
 ├── data/
 │   └── conversations/            # JSON conversation storage
 │
+├── tests/
+│   └── live-llm/                 # Live LLM tests (real API, no UI)
+│       ├── server-utils.ts       # Start/stop Next.js server
+│       └── chat.test.ts          # Chat endpoint tests
+│
+├── vitest.config.ts              # Vitest configuration
 └── ...config files
 ```
 
@@ -209,3 +215,32 @@ Response: `Conversation`
 
 ### PUT /api/storage/conversations/[id]
 Request: `Conversation`
+
+## Testing
+
+### Test Runner
+Vitest with TypeScript support. Configured in `vitest.config.ts`.
+
+### Test Commands
+```bash
+npm run test        # Run all tests
+npm run test:live   # Run live LLM tests only
+```
+
+### Live LLM Tests
+Tests that run against the real Anthropic API without involving the UI.
+
+**Server Utilities** (`tests/live-llm/server-utils.ts`):
+- `startServer()` - Spawns Next.js dev server on port 3939
+- `stopServer()` - Gracefully shuts down the server
+- `getServerUrl()` - Returns the test server URL
+- `waitForServer()` - Polls until server is healthy
+
+**Test Flow**:
+1. `beforeAll`: Start Next.js server, wait for health check
+2. Test: Make HTTP requests to `/api/chat`, verify streaming response
+3. `afterAll`: Stop server
+
+**Timeouts**:
+- Test timeout: 60s (for LLM response time)
+- Hook timeout: 120s (for server startup)
