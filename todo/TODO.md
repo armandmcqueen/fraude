@@ -2,11 +2,23 @@
 
 ## Current Status
 **Phase**: Core app and developer tooling complete
-**Next up**: Testing or UI polish
+**Next up**: Multi-actor conversations or testing
 
 ---
 
 ## TODO List
+
+### Multi-Actor Conversations
+See [multi_actor_conversations.md](./multi_actor_conversations.md) for full implementation plan.
+
+- [ ] Add Actor and ActorConfig types
+- [ ] Create built-in actor definitions (Optimist, Critic, Expert, Creative)
+- [ ] Implement MultiActorSession service (sequential round-robin orchestration)
+- [ ] Update Message component to display actor name/color
+- [ ] Create ActorSelector component (enable/disable/reorder actors)
+- [ ] Create ActorConfigModal for custom actor creation
+- [ ] Integrate with ChatView and page.tsx
+- [ ] Test and polish
 
 ### Testing
 
@@ -41,4 +53,5 @@
 - See `DESIGN.md` for architecture and design decisions
 - See `IMPLEMENTATION.md` for implementation details
 - See `todo/DONE.md` for completed work history
+- See `todo/multi_actor_conversations.md` for multi-actor feature plan
 - Set `ANTHROPIC_API_KEY` environment variable before running
