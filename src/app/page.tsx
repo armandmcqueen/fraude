@@ -5,12 +5,13 @@ import { Sidebar } from '@/components/sidebar';
 import { ChatView } from '@/components/chat';
 import { useConversations } from '@/hooks';
 import {
-  ChatSession,
+  MultiPersonaChatSession,
   TitleService,
   APILLMClient,
   APIStorageClient,
-  DefaultPromptProvider,
+  sequentialOrchestrator,
 } from '@/services';
+import { PERSONAS } from '@/lib/personas';
 
 export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -20,14 +21,14 @@ export default function Home() {
   const session = useMemo(() => {
     const llmClient = new APILLMClient();
     const storageClient = new APIStorageClient();
-    const promptProvider = new DefaultPromptProvider();
     const titleService = new TitleService(llmClient);
 
-    return new ChatSession({
+    return new MultiPersonaChatSession({
       llmClient,
       storageClient,
-      promptProvider,
       titleService,
+      personas: PERSONAS,
+      orchestrator: sequentialOrchestrator,
     });
   }, []);
 

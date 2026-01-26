@@ -1,6 +1,20 @@
 import { Conversation } from '@/types';
 
 /**
+ * Common interface for chat sessions (both single and multi-actor).
+ * Allows components to work with either implementation.
+ */
+export interface ChatSessionInterface {
+  readonly events: EventEmitter<ChatSessionEvents>;
+  getConversation(): Conversation | null;
+  getIsStreaming(): boolean;
+  loadConversation(id: string): Promise<void>;
+  createNewConversation(model?: string): void;
+  setModel(model: string): void;
+  sendMessage(content: string): Promise<void>;
+}
+
+/**
  * Events emitted by ChatSession for UI to subscribe to.
  */
 export interface ChatSessionEvents {

@@ -2,17 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Conversation } from '@/types';
-import { ChatSession } from '@/services';
+import { ChatSessionInterface } from '@/services';
 
 interface UseChatOptions {
   onConversationUpdate?: () => void;
 }
 
 /**
- * React hook that wraps ChatSession.
+ * React hook that wraps a chat session (single or multi-actor).
  * Subscribes to session events and exposes state + methods to components.
  */
-export function useChat(session: ChatSession, options?: UseChatOptions) {
+export function useChat(session: ChatSessionInterface, options?: UseChatOptions) {
   const [conversation, setConversation] = useState<Conversation | null>(
     session.getConversation()
   );

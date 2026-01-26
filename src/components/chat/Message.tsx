@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message as MessageType } from '@/types';
+import { getPersonaName } from '@/lib/personas';
 
 interface MessageProps {
   message: MessageType;
@@ -25,6 +26,11 @@ export function Message({ message, isStreaming }: MessageProps) {
             : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
         }`}
       >
+        {!isUser && message.personaId && (
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            {getPersonaName(message.personaId)}
+          </div>
+        )}
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useChat } from '@/hooks';
-import { ChatSession } from '@/services';
+import { ChatSessionInterface } from '@/services';
 import { MessageList } from './MessageList';
 import { InputArea } from './InputArea';
 import { LLMInspector } from '@/components/inspector';
 
 interface ChatViewProps {
-  session: ChatSession;
+  session: ChatSessionInterface;
   conversationId: string | null;
   onConversationUpdate?: () => void;
 }

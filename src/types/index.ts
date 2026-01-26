@@ -4,7 +4,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   createdAt: Date;
-  // Future: attachments?: Attachment[];
+  personaId?: string; // Which persona sent this (undefined for user messages)
 }
 
 // Full conversation with messages
