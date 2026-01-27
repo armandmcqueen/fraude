@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { ChatView } from '@/components/chat';
 import { useConversations, usePersonas, useResources } from '@/hooks';
+import { ViewMode } from '@/types';
 import {
   MultiPersonaChatSession,
   TitleService,
@@ -17,6 +18,7 @@ import {
 export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [config, setConfig] = useState<ConversationConfig>(DEFAULT_CONFIG);
+  const [viewMode, setViewMode] = useState<ViewMode>('focused');
   const { conversations, loading, refresh } = useConversations();
   const {
     personas,
@@ -131,6 +133,8 @@ export default function Home() {
         onResourceDelete={deleteResource}
         resourcesLoading={resourcesLoading}
         getResourceContent={getResourceContent}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
     </div>
   );

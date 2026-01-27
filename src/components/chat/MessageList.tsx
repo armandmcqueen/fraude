@@ -1,16 +1,26 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Message as MessageType } from '@/types';
+import { Message as MessageType, ViewMode } from '@/types';
 import { Message } from './Message';
+import { FocusedMessageGroup, groupMessagesIntoExchanges } from './FocusedMessageGroup';
 
 interface MessageListProps {
   messages: MessageType[];
   isStreaming: boolean;
   getPersonaName?: (id: string) => string;
+  viewMode?: ViewMode;
+  /** Order of persona IDs for consistent tab ordering in focused mode */
+  personaOrder?: string[];
 }
 
-export function MessageList({ messages, isStreaming, getPersonaName }: MessageListProps) {
+export function MessageList({
+  messages,
+  isStreaming,
+  getPersonaName,
+  viewMode = 'expanded',
+  personaOrder = [],
+}: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const autoScrollEnabled = useRef(true);
@@ -61,6 +71,40 @@ export function MessageList({ messages, isStreaming, getPersonaName }: MessageLi
     );
   }
 
+  // Render based on view mode
+  if (viewMode === 'focused') {
+    const exchanges = groupMessagesIntoExchanges(messages);
+
+    return (
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4"
+      >
+        {exchanges.map((exchange, index) => {
+          // Check if this is the last exchange and has streaming responses
+          const isLastExchange = index === exchanges.length - 1;
+          const hasStreamingResponse =
+            isLastExchange &&
+            isStreaming &&
+            exchange.personaResponses.some((r) => r.content === '');
+
+          return (
+            <FocusedMessageGroup
+              key={exchange.userMessage.id}
+              exchange={exchange}
+              isStreaming={hasStreamingResponse}
+              getPersonaName={getPersonaName}
+              personaOrder={personaOrder}
+            />
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+    );
+  }
+
+  // Default: expanded view (all messages visible)
   return (
     <div
       ref={containerRef}

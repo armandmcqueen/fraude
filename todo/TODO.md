@@ -30,6 +30,12 @@
 ### Persona Enhancements
 - [ ] Auto-generate persona description from system prompt (use LLM to create a short summary for display)
 - [x] Allow users to reorder personas (up/down buttons) to control response order
+- [x] Edit existing personas (name and system prompt)
+
+### View Modes (Completed)
+- [x] Focused view mode - shows one persona response at a time with tabs to switch
+- [x] Toggle button in header to switch between expanded/focused views
+- [ ] Micro-summaries for inactive personas in focused view (future enhancement)
 
 ### Known Issues
 - [ ] **Auto-scroll hitch**: When scrolling up during streaming, there's a small hitch/stutter before auto-scroll disables. The current implementation tracks scroll direction and disables auto-scroll on upward scroll, but there's a brief fight between user scroll and auto-scroll. Potential fixes to try:

@@ -80,7 +80,11 @@ export interface ResourceSummary {
   name: string;
 }
 
+// View mode for message display
+export type ViewMode = 'expanded' | 'focused';
+
 // User settings (persisted preferences)
 export interface UserSettings {
   selectedPersonaIds: string[];
+  viewMode?: ViewMode;
 }
