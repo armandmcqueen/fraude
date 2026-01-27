@@ -23,6 +23,8 @@ interface ChatViewProps {
   onPersonaToggle?: (id: string) => void;
   onPersonaCreate?: (name: string, systemPrompt: string) => Promise<unknown>;
   onPersonaDelete?: (id: string) => void;
+  onPersonaMoveUp?: (id: string) => void;
+  onPersonaMoveDown?: (id: string) => void;
   personasLoading?: boolean;
   // Function to get persona name by ID
   getPersonaName?: (id: string) => string;
@@ -39,6 +41,8 @@ export function ChatView({
   onPersonaToggle,
   onPersonaCreate,
   onPersonaDelete,
+  onPersonaMoveUp,
+  onPersonaMoveDown,
   personasLoading,
   getPersonaName,
 }: ChatViewProps) {
@@ -101,6 +105,8 @@ export function ChatView({
           onPersonaToggle={onPersonaToggle}
           onPersonaCreate={onPersonaCreate}
           onPersonaDelete={onPersonaDelete}
+          onPersonaMoveUp={onPersonaMoveUp}
+          onPersonaMoveDown={onPersonaMoveDown}
           personasLoading={personasLoading}
         />
       )}

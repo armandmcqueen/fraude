@@ -9,6 +9,8 @@ interface PersonaSelectorProps {
   onToggle: (id: string) => void;
   onCreate: (name: string, systemPrompt: string) => Promise<unknown>;
   onDelete: (id: string) => void;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
   disabled?: boolean;
   loading?: boolean;
 }
@@ -19,6 +21,8 @@ export function PersonaSelector({
   onToggle,
   onCreate,
   onDelete,
+  onMoveUp,
+  onMoveDown,
   disabled,
   loading,
 }: PersonaSelectorProps) {
@@ -58,67 +62,153 @@ export function PersonaSelector({
     );
   }
 
+  // Get selected personas in order, and unselected personas
+  const selectedPersonas = selectedIds
+    .map((id) => personas.find((p) => p.id === id))
+    .filter((p): p is PersonaSummary => p !== undefined);
+  const unselectedPersonas = personas.filter((p) => !selectedIds.includes(p.id));
+
   return (
     <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
       <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-        Personas
+        Personas (response order)
       </div>
 
-      {/* Persona checkboxes */}
+      {/* Selected personas in order */}
       <div className="flex flex-wrap gap-2 mb-2">
-        {personas.map((persona) => {
-          const isSelected = selectedIds.includes(persona.id);
+        {selectedPersonas.map((persona, index) => {
           const isDefault = defaultIds.includes(persona.id);
           const canDelete = !isDefault && personas.length > 1;
           const canDeselect = selectedIds.length > 1;
+          const isFirst = index === 0;
+          const isLast = index === selectedPersonas.length - 1;
 
           return (
             <div
               key={persona.id}
-              className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+              className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-600 rounded px-2 py-1"
             >
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => onToggle(persona.id)}
-                  disabled={disabled || (isSelected && !canDeselect)}
-                  className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
-                />
-                <span className="text-sm text-gray-900 dark:text-gray-100">
-                  {persona.name}
-                </span>
-              </label>
-              {canDelete && (
+              {/* Order number */}
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400 w-4">
+                {index + 1}.
+              </span>
+
+              {/* Up/Down buttons */}
+              <div className="flex flex-col -my-0.5">
                 <button
-                  onClick={() => onDelete(persona.id)}
+                  onClick={() => onMoveUp(persona.id)}
+                  disabled={disabled || isFirst}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Move up"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onMoveDown(persona.id)}
+                  disabled={disabled || isLast}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Move down"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+
+              <span className="text-sm text-gray-900 dark:text-gray-100">
+                {persona.name}
+              </span>
+
+              {/* Deselect button */}
+              {canDeselect && (
+                <button
+                  onClick={() => onToggle(persona.id)}
                   disabled={disabled}
-                  className="ml-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
-                  title="Delete persona"
+                  className="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+                  title="Remove from selection"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               )}
+
+              {/* Delete button */}
+              {canDelete && (
+                <button
+                  onClick={() => onDelete(persona.id)}
+                  disabled={disabled}
+                  className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                  title="Delete persona"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
             </div>
           );
         })}
-
-        {/* Add button */}
-        {!isCreating && (
-          <button
-            onClick={() => setIsCreating(true)}
-            disabled={disabled}
-            className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add
-          </button>
-        )}
       </div>
+
+      {/* Unselected personas */}
+      {unselectedPersonas.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {unselectedPersonas.map((persona) => {
+            const isDefault = defaultIds.includes(persona.id);
+            const canDelete = !isDefault && personas.length > 1;
+
+            return (
+              <div
+                key={persona.id}
+                className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 opacity-60"
+              >
+                <button
+                  onClick={() => onToggle(persona.id)}
+                  disabled={disabled}
+                  className="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50"
+                  title="Add to selection"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {persona.name}
+                </span>
+                {canDelete && (
+                  <button
+                    onClick={() => onDelete(persona.id)}
+                    disabled={disabled}
+                    className="ml-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                    title="Delete persona"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add button */}
+      {!isCreating && (
+        <button
+          onClick={() => setIsCreating(true)}
+          disabled={disabled}
+          className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New Persona
+        </button>
+      )}
 
       {/* Create form */}
       {isCreating && (

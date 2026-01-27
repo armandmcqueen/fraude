@@ -14,6 +14,8 @@ interface ConfigPanelProps {
   onPersonaToggle?: (id: string) => void;
   onPersonaCreate?: (name: string, systemPrompt: string) => Promise<unknown>;
   onPersonaDelete?: (id: string) => void;
+  onPersonaMoveUp?: (id: string) => void;
+  onPersonaMoveDown?: (id: string) => void;
   personasLoading?: boolean;
 }
 
@@ -26,6 +28,8 @@ export function ConfigPanel({
   onPersonaToggle,
   onPersonaCreate,
   onPersonaDelete,
+  onPersonaMoveUp,
+  onPersonaMoveDown,
   personasLoading,
 }: ConfigPanelProps) {
   const currentPresetName = Object.entries(CONFIG_PRESETS).find(
@@ -39,7 +43,9 @@ export function ConfigPanel({
     selectedPersonaIds !== undefined &&
     onPersonaToggle !== undefined &&
     onPersonaCreate !== undefined &&
-    onPersonaDelete !== undefined;
+    onPersonaDelete !== undefined &&
+    onPersonaMoveUp !== undefined &&
+    onPersonaMoveDown !== undefined;
 
   return (
     <div>
@@ -51,6 +57,8 @@ export function ConfigPanel({
           onToggle={onPersonaToggle}
           onCreate={onPersonaCreate}
           onDelete={onPersonaDelete}
+          onMoveUp={onPersonaMoveUp}
+          onMoveDown={onPersonaMoveDown}
           disabled={disabled}
           loading={personasLoading}
         />

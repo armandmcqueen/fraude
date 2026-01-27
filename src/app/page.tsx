@@ -25,6 +25,8 @@ export default function Home() {
     toggleSelection,
     createPersona,
     deletePersona,
+    moveUp,
+    moveDown,
     getPersonaName,
     loading: personasLoading,
   } = usePersonas();
@@ -89,6 +91,8 @@ export default function Home() {
         onPersonaToggle={toggleSelection}
         onPersonaCreate={createPersona}
         onPersonaDelete={deletePersona}
+        onPersonaMoveUp={moveUp}
+        onPersonaMoveDown={moveDown}
         personasLoading={personasLoading}
         getPersonaName={getPersonaName}
       />

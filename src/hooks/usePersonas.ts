@@ -126,6 +126,28 @@ export function usePersonas() {
     });
   }, []);
 
+  // Move a persona up in the order (earlier in response sequence)
+  const moveUp = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const index = prev.indexOf(id);
+      if (index <= 0) return prev; // Already first or not found
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next;
+    });
+  }, []);
+
+  // Move a persona down in the order (later in response sequence)
+  const moveDown = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const index = prev.indexOf(id);
+      if (index < 0 || index >= prev.length - 1) return prev; // Already last or not found
+      const next = [...prev];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next;
+    });
+  }, []);
+
   // Get persona name by ID (for display)
   const getPersonaName = useCallback(
     (personaId: string): string => {
@@ -143,6 +165,8 @@ export function usePersonas() {
     createPersona,
     deletePersona,
     toggleSelection,
+    moveUp,
+    moveDown,
     getPersonaName,
     loading,
     error,

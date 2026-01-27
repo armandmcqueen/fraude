@@ -29,7 +29,7 @@
 
 ### Persona Enhancements
 - [ ] Auto-generate persona description from system prompt (use LLM to create a short summary for display)
-- [ ] Allow users to reorder personas (drag-and-drop or up/down buttons) to control response order
+- [x] Allow users to reorder personas (up/down buttons) to control response order
 
 ### Known Issues
 - [ ] **Auto-scroll hitch**: When scrolling up during streaming, there's a small hitch/stutter before auto-scroll disables. The current implementation tracks scroll direction and disables auto-scroll on upward scroll, but there's a brief fight between user scroll and auto-scroll. Potential fixes to try:
