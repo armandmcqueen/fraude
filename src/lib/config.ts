@@ -7,6 +7,8 @@ export const config = {
   // Storage
   dataDir: './data/conversations',
   personasDir: './data/personas',
+  resourcesDir: './data/resources',
+  settingsFile: './data/settings.json',
 
   // UI
   maxMessageLength: 100000,

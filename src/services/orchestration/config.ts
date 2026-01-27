@@ -18,8 +18,8 @@ export interface ConversationConfig {
 }
 
 export const DEFAULT_CONFIG: ConversationConfig = {
-  executionMode: 'sequential',
-  contextMode: 'shared',
+  executionMode: 'parallel',
+  contextMode: 'isolated',
 };
 
 /**

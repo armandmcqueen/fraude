@@ -32,6 +32,8 @@ export class MultiPersonaChatSession {
   private orchestrator: Orchestrator;
   private conversationConfig: ConversationConfig;
   private isStreaming = false;
+  private abortController: AbortController | null = null;
+  private currentMessageId: string | null = null;
 
   constructor(deps: MultiPersonaChatSessionDeps) {
     this.llmClient = deps.llmClient;
@@ -113,6 +115,21 @@ export class MultiPersonaChatSession {
   }
 
   /**
+   * Cancel the current streaming operation.
+   */
+  cancel(): void {
+    if (this.abortController && this.isStreaming) {
+      this.abortController.abort();
+      this.abortController = null;
+      this.isStreaming = false;
+      if (this.currentMessageId) {
+        this.events.emit('streamCancelled', { messageId: this.currentMessageId });
+      }
+      this.events.emit('streamEnd', { messageId: this.currentMessageId || '' });
+    }
+  }
+
+  /**
    * Send a message and orchestrate responses from multiple personas.
    */
   async sendMessage(content: string): Promise<void> {
@@ -136,6 +153,9 @@ export class MultiPersonaChatSession {
     };
     this.events.emit('conversationUpdated', this.conversation);
 
+    // Set up abort controller for cancellation
+    this.abortController = new AbortController();
+    this.currentMessageId = userMessage.id;
     this.isStreaming = true;
     this.events.emit('streamStart', { messageId: userMessage.id });
 
@@ -167,9 +187,16 @@ export class MultiPersonaChatSession {
       // Save to storage
       await this.storageClient.saveConversation(this.conversation);
     } catch (error) {
+      // Don't emit error if it was an abort
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Cancellation already handled in cancel()
+        return;
+      }
       const err = error instanceof Error ? error : new Error('Unknown error');
       this.events.emit('error', err);
     } finally {
+      this.abortController = null;
+      this.currentMessageId = null;
       this.isStreaming = false;
       this.events.emit('streamEnd', { messageId: userMessage.id });
     }
@@ -270,7 +297,8 @@ export class MultiPersonaChatSession {
       this.conversation.id,
       messagesForLLM,
       systemPrompt,
-      { model: this.conversation.model }
+      { model: this.conversation.model },
+      this.abortController?.signal
     )) {
       if (chunk.type === 'text' && chunk.content) {
         personaContent += chunk.content;
@@ -314,7 +342,8 @@ export class MultiPersonaChatSession {
       this.conversation.id,
       messagesForLLM,
       systemPrompt,
-      { model: this.conversation.model }
+      { model: this.conversation.model },
+      this.abortController?.signal
     )) {
       if (chunk.type === 'text' && chunk.content) {
         personaContent += chunk.content;

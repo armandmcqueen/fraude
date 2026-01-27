@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useChat } from '@/hooks';
 import { ChatSessionInterface } from '@/services';
 import { ConversationConfig } from '@/services/orchestration';
-import { PersonaSummary } from '@/types';
+import { PersonaSummary, ResourceSummary, Resource } from '@/types';
 import { MessageList } from './MessageList';
 import { InputArea } from './InputArea';
 import { ConfigPanel } from './ConfigPanel';
@@ -28,6 +28,15 @@ interface ChatViewProps {
   personasLoading?: boolean;
   // Function to get persona name by ID
   getPersonaName?: (id: string) => string;
+  // Resource props
+  resources?: ResourceSummary[];
+  onResourceFetch?: (id: string) => Promise<Resource | null>;
+  onResourceCreate?: (name: string, content: string) => Promise<unknown>;
+  onResourceUpdate?: (id: string, name: string, content: string) => Promise<unknown>;
+  onResourceDelete?: (id: string) => void;
+  resourcesLoading?: boolean;
+  // Function to get resource content by name
+  getResourceContent?: (name: string) => string | undefined;
 }
 
 export function ChatView({
@@ -45,6 +54,13 @@ export function ChatView({
   onPersonaMoveDown,
   personasLoading,
   getPersonaName,
+  resources,
+  onResourceFetch,
+  onResourceCreate,
+  onResourceUpdate,
+  onResourceDelete,
+  resourcesLoading,
+  getResourceContent,
 }: ChatViewProps) {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const {
@@ -55,6 +71,7 @@ export function ChatView({
     createNewConversation,
     setModel,
     sendMessage,
+    cancel,
   } = useChat(session, { onConversationUpdate });
 
   // Load conversation when ID changes
@@ -108,6 +125,12 @@ export function ChatView({
           onPersonaMoveUp={onPersonaMoveUp}
           onPersonaMoveDown={onPersonaMoveDown}
           personasLoading={personasLoading}
+          resources={resources}
+          onResourceFetch={onResourceFetch}
+          onResourceCreate={onResourceCreate}
+          onResourceUpdate={onResourceUpdate}
+          onResourceDelete={onResourceDelete}
+          resourcesLoading={resourcesLoading}
         />
       )}
 
@@ -124,9 +147,11 @@ export function ChatView({
       {/* Input */}
       <InputArea
         onSend={sendMessage}
+        onCancel={cancel}
         disabled={isStreaming}
         model={conversation.model}
         onModelChange={setModel}
+        getResourceContent={getResourceContent}
       />
 
       {/* LLM Inspector */}

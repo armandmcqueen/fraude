@@ -1,4 +1,4 @@
-import { Conversation, ConversationSummary, Persona, PersonaSummary } from '@/types';
+import { Conversation, ConversationSummary, Persona, PersonaSummary, Resource, ResourceSummary, UserSettings } from '@/types';
 
 export interface StorageProvider {
   listConversations(): Promise<ConversationSummary[]>;
@@ -13,4 +13,17 @@ export interface PersonaStorageProvider {
   createPersona(persona: Persona): Promise<void>;
   deletePersona(id: string): Promise<void>;
   ensureDefaultPersonas(): Promise<void>;
+}
+
+export interface ResourceStorageProvider {
+  listResources(): Promise<ResourceSummary[]>;
+  getResource(id: string): Promise<Resource | null>;
+  createResource(resource: Resource): Promise<void>;
+  updateResource(resource: Resource): Promise<void>;
+  deleteResource(id: string): Promise<void>;
+}
+
+export interface SettingsStorageProvider {
+  getSettings(): Promise<UserSettings | null>;
+  saveSettings(settings: UserSettings): Promise<void>;
 }

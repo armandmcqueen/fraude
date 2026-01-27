@@ -27,6 +27,8 @@ export class ChatSession {
   private promptProvider: PromptProvider;
   private titleService: TitleService;
   private isStreaming = false;
+  private abortController: AbortController | null = null;
+  private currentMessageId: string | null = null;
 
   constructor(deps: ChatSessionDeps) {
     this.llmClient = deps.llmClient;
@@ -87,6 +89,21 @@ export class ChatSession {
   }
 
   /**
+   * Cancel the current streaming operation.
+   */
+  cancel(): void {
+    if (this.abortController && this.isStreaming) {
+      this.abortController.abort();
+      this.abortController = null;
+      this.isStreaming = false;
+      if (this.currentMessageId) {
+        this.events.emit('streamCancelled', { messageId: this.currentMessageId });
+      }
+      this.events.emit('streamEnd', { messageId: this.currentMessageId || '' });
+    }
+  }
+
+  /**
    * Send a message and stream the assistant's response.
    */
   async sendMessage(content: string): Promise<void> {
@@ -118,6 +135,9 @@ export class ChatSession {
     };
     this.events.emit('conversationUpdated', this.conversation);
 
+    // Set up abort controller for cancellation
+    this.abortController = new AbortController();
+    this.currentMessageId = assistantMessage.id;
     this.isStreaming = true;
     this.events.emit('streamStart', { messageId: assistantMessage.id });
 
@@ -136,7 +156,8 @@ export class ChatSession {
         this.conversation.id,
         messagesForLLM,
         systemPrompt,
-        { model: this.conversation.model }
+        { model: this.conversation.model },
+        this.abortController?.signal
       )) {
         if (chunk.type === 'text' && chunk.content) {
           assistantContent += chunk.content;
@@ -167,6 +188,11 @@ export class ChatSession {
       // Save to storage
       await this.storageClient.saveConversation(this.conversation);
     } catch (error) {
+      // Don't emit error if it was an abort
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Cancellation already handled in cancel()
+        return;
+      }
       const err = error instanceof Error ? error : new Error('Unknown error');
       this.events.emit('error', err);
 
@@ -176,6 +202,8 @@ export class ChatSession {
         `Error: ${err.message}`
       );
     } finally {
+      this.abortController = null;
+      this.currentMessageId = null;
       this.isStreaming = false;
       this.events.emit('streamEnd', { messageId: assistantMessage.id });
     }

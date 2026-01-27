@@ -1,8 +1,9 @@
 'use client';
 
 import { ConversationConfig, CONFIG_PRESETS } from '@/services/orchestration';
-import { PersonaSummary } from '@/types';
+import { PersonaSummary, ResourceSummary, Resource } from '@/types';
 import { PersonaSelector } from './PersonaSelector';
+import { ResourceManager } from './ResourceManager';
 
 interface ConfigPanelProps {
   config: ConversationConfig;
@@ -17,6 +18,13 @@ interface ConfigPanelProps {
   onPersonaMoveUp?: (id: string) => void;
   onPersonaMoveDown?: (id: string) => void;
   personasLoading?: boolean;
+  // Resource props
+  resources?: ResourceSummary[];
+  onResourceFetch?: (id: string) => Promise<Resource | null>;
+  onResourceCreate?: (name: string, content: string) => Promise<unknown>;
+  onResourceUpdate?: (id: string, name: string, content: string) => Promise<unknown>;
+  onResourceDelete?: (id: string) => void;
+  resourcesLoading?: boolean;
 }
 
 export function ConfigPanel({
@@ -31,6 +39,12 @@ export function ConfigPanel({
   onPersonaMoveUp,
   onPersonaMoveDown,
   personasLoading,
+  resources,
+  onResourceFetch,
+  onResourceCreate,
+  onResourceUpdate,
+  onResourceDelete,
+  resourcesLoading,
 }: ConfigPanelProps) {
   const currentPresetName = Object.entries(CONFIG_PRESETS).find(
     ([, preset]) =>
@@ -47,6 +61,13 @@ export function ConfigPanel({
     onPersonaMoveUp !== undefined &&
     onPersonaMoveDown !== undefined;
 
+  const showResourceManager =
+    resources !== undefined &&
+    onResourceFetch !== undefined &&
+    onResourceCreate !== undefined &&
+    onResourceUpdate !== undefined &&
+    onResourceDelete !== undefined;
+
   return (
     <div>
       {/* Persona selector */}
@@ -61,6 +82,19 @@ export function ConfigPanel({
           onMoveDown={onPersonaMoveDown}
           disabled={disabled}
           loading={personasLoading}
+        />
+      )}
+
+      {/* Resource manager */}
+      {showResourceManager && (
+        <ResourceManager
+          resources={resources}
+          onFetchResource={onResourceFetch}
+          onCreate={onResourceCreate}
+          onUpdate={onResourceUpdate}
+          onDelete={onResourceDelete}
+          disabled={disabled}
+          loading={resourcesLoading}
         />
       )}
 

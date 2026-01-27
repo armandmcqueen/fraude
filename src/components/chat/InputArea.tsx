@@ -2,32 +2,36 @@
 
 import { useState, useCallback, KeyboardEvent } from 'react';
 import { ModelSelector } from './ModelSelector';
-import { expandTestInput } from '@/lib/test-inputs';
+import { expandInput } from '@/lib/test-inputs';
 
 interface InputAreaProps {
   onSend: (content: string) => void;
+  onCancel?: () => void;
   disabled: boolean;
   model: string;
   onModelChange: (model: string) => void;
+  getResourceContent?: (name: string) => string | undefined;
 }
 
 export function InputArea({
   onSend,
+  onCancel,
   disabled,
   model,
   onModelChange,
+  getResourceContent,
 }: InputAreaProps) {
   const [input, setInput] = useState('');
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
     if (trimmed && !disabled) {
-      // Expand slash commands to test inputs (e.g., /1 → "What is 2 + 2?")
-      const expanded = expandTestInput(trimmed);
+      // Expand slash commands and @resource mentions
+      const expanded = expandInput(trimmed, getResourceContent ?? (() => undefined));
       onSend(expanded);
       setInput('');
     }
-  }, [input, disabled, onSend]);
+  }, [input, disabled, onSend, getResourceContent]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -59,13 +63,22 @@ export function InputArea({
             onChange={onModelChange}
             disabled={disabled}
           />
-          <button
-            onClick={handleSend}
-            disabled={disabled || !input.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {disabled ? 'Sending...' : 'Send'}
-          </button>
+          {disabled && onCancel ? (
+            <button
+              onClick={onCancel}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              Cancel
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={disabled || !input.trim()}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {disabled ? 'Sending...' : 'Send'}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Persona, PersonaSummary } from '@/types';
-import { APIPersonaStorageClient } from '@/services';
+import { APIPersonaStorageClient, APISettingsStorageClient } from '@/services';
 import { generateId } from '@/lib/utils';
 
 const personaClient = new APIPersonaStorageClient();
+const settingsClient = new APISettingsStorageClient();
 
 export function usePersonas() {
   const [personas, setPersonas] = useState<PersonaSummary[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>(['optimist', 'critic']);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [fullPersonas, setFullPersonas] = useState<Map<string, Persona>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const isInitialMount = useRef(true);
 
   // Fetch list of personas
   const fetchPersonas = useCallback(async () => {
@@ -21,10 +24,47 @@ export function usePersonas() {
       const data = await personaClient.listPersonas();
       setPersonas(data);
       setError(null);
+      return data;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
+      return [];
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  // Load saved settings and reconcile with available personas
+  const loadSettings = useCallback(async (availablePersonas: PersonaSummary[]) => {
+    try {
+      const settings = await settingsClient.getSettings();
+      const availableIds = new Set(availablePersonas.map((p) => p.id));
+
+      // Filter out any saved persona IDs that no longer exist
+      const validIds = settings.selectedPersonaIds.filter((id) => availableIds.has(id));
+
+      // If no valid IDs remain, fall back to defaults
+      if (validIds.length === 0) {
+        const defaults = ['optimist', 'critic'].filter((id) => availableIds.has(id));
+        setSelectedIds(defaults.length > 0 ? defaults : [availablePersonas[0]?.id].filter(Boolean));
+      } else {
+        setSelectedIds(validIds);
+      }
+    } catch {
+      // On error, use defaults
+      const availableIds = new Set(availablePersonas.map((p) => p.id));
+      const defaults = ['optimist', 'critic'].filter((id) => availableIds.has(id));
+      setSelectedIds(defaults.length > 0 ? defaults : [availablePersonas[0]?.id].filter(Boolean));
+    } finally {
+      setSettingsLoaded(true);
+    }
+  }, []);
+
+  // Save settings when selection changes (but not on initial load)
+  const saveSettings = useCallback(async (ids: string[]) => {
+    try {
+      await settingsClient.saveSettings({ selectedPersonaIds: ids });
+    } catch (err) {
+      console.error('Failed to save persona selection:', err);
     }
   }, []);
 
@@ -61,10 +101,27 @@ export function usePersonas() {
     fetchSelectedPersonas().then(setSelectedPersonas);
   }, [fetchSelectedPersonas]);
 
-  // Initial fetch
+  // Initial fetch - load personas then settings
   useEffect(() => {
-    fetchPersonas();
-  }, [fetchPersonas]);
+    const init = async () => {
+      const availablePersonas = await fetchPersonas();
+      await loadSettings(availablePersonas);
+    };
+    init();
+  }, [fetchPersonas, loadSettings]);
+
+  // Save settings when selection changes (skip initial mount)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      if (settingsLoaded) {
+        isInitialMount.current = false;
+      }
+      return;
+    }
+    if (selectedIds.length > 0) {
+      saveSettings(selectedIds);
+    }
+  }, [selectedIds, settingsLoaded, saveSettings]);
 
   // Create a new persona
   const createPersona = useCallback(

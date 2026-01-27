@@ -17,10 +17,11 @@ fraude/
 │   │       ├── llm-calls/        # LLM call recording inspector API
 │   │       └── storage/
 │   │           ├── conversations/  # CRUD for conversations
-│   │           └── personas/       # CRUD for personas
+│   │           ├── personas/       # CRUD for personas
+│   │           └── resources/      # CRUD for resources
 │   │
 │   ├── components/
-│   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector, ConfigPanel, PersonaSelector
+│   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector, ConfigPanel, PersonaSelector, ResourceManager
 │   │   ├── inspector/            # LLMInspector (dev panel for viewing LLM calls)
 │   │   └── sidebar/              # Sidebar, ConversationItem
 │   │
@@ -34,9 +35,10 @@ fraude/
 │   │   │   ├── APILLMClient.ts   # HTTP client for /api/chat, /api/complete
 │   │   │   └── index.ts
 │   │   ├── storage/
-│   │   │   ├── types.ts          # StorageClient, PersonaStorageClient interfaces
+│   │   │   ├── types.ts          # StorageClient, PersonaStorageClient, ResourceStorageClient interfaces
 │   │   │   ├── APIStorageClient.ts
 │   │   │   ├── APIPersonaStorageClient.ts  # HTTP client for persona CRUD
+│   │   │   ├── APIResourceStorageClient.ts # HTTP client for resource CRUD
 │   │   │   ├── InMemoryStorageClient.ts  # For testing
 │   │   │   └── index.ts
 │   │   ├── prompt/
@@ -54,17 +56,20 @@ fraude/
 │   │   ├── llm-recorder.ts       # Records LLM calls to disk
 │   │   ├── logger.ts             # Logging wrapper (log.debug/info/warn/error)
 │   │   ├── personas.ts           # Default persona definitions for prepopulation
+│   │   ├── test-inputs.ts        # Slash commands and @resource expansion
 │   │   ├── utils.ts              # generateId, etc.
 │   │   └── storage/              # Server-side JSON storage
-│   │       ├── types.ts          # StorageProvider, PersonaStorageProvider interfaces
+│   │       ├── types.ts          # StorageProvider, PersonaStorageProvider, ResourceStorageProvider interfaces
 │   │       ├── json-storage.ts   # JSON file storage for conversations
 │   │       ├── json-persona-storage.ts  # JSON file storage for personas
+│   │       ├── json-resource-storage.ts # JSON file storage for resources
 │   │       └── index.ts
 │   │
 │   ├── hooks/                    # Thin React wrappers
 │   │   ├── useChat.ts            # Subscribes to ChatSession events
 │   │   ├── useConversations.ts   # Fetches conversation list
 │   │   ├── usePersonas.ts        # Persona fetching, selection, create/delete
+│   │   ├── useResources.ts       # Resource fetching, create/update/delete
 │   │   └── index.ts
 │   │
 │   └── types/                    # Shared TypeScript types
@@ -73,6 +78,7 @@ fraude/
 ├── data/
 │   ├── conversations/            # JSON conversation storage
 │   ├── personas/                 # JSON persona storage
+│   ├── resources/                # JSON resource storage (for @mentions)
 │   └── llm-calls/                # LLM call recordings (per conversation)
 │
 ├── tests/
@@ -139,6 +145,21 @@ interface Persona {
 
 // PersonaSummary (for list view)
 interface PersonaSummary {
+  id: string;
+  name: string;
+}
+
+// Resource (saved content for @mention substitution)
+interface Resource {
+  id: string;
+  name: string;  // Reference name (e.g., "project-context" for @project-context)
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ResourceSummary (for list view)
+interface ResourceSummary {
   id: string;
   name: string;
 }
@@ -318,6 +339,21 @@ Request: `Persona`
 Response: `Persona`
 
 ### DELETE /api/storage/personas/[id]
+Response: `{ success: true }`
+
+### GET /api/storage/resources
+Response: `ResourceSummary[]`
+
+### POST /api/storage/resources
+Request: `Resource`
+
+### GET /api/storage/resources/[id]
+Response: `Resource`
+
+### PUT /api/storage/resources/[id]
+Request: `Resource`
+
+### DELETE /api/storage/resources/[id]
 Response: `{ success: true }`
 
 ## Testing

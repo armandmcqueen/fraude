@@ -5,3 +5,4 @@ export { InputArea } from './InputArea';
 export { ModelSelector } from './ModelSelector';
 export { ConfigPanel } from './ConfigPanel';
 export { PersonaSelector } from './PersonaSelector';
+export { ResourceManager } from './ResourceManager';

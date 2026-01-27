@@ -17,12 +17,14 @@ export class APILLMClient {
 
   /**
    * Stream a chat completion from the server.
+   * @param signal Optional AbortSignal to cancel the request
    */
   async *streamChat(
     conversationId: string,
     messages: Message[],
     systemPrompt: string,
-    options: LLMOptions
+    options: LLMOptions,
+    signal?: AbortSignal
   ): AsyncGenerator<StreamChunk> {
     const response = await fetch(this.chatEndpoint, {
       method: 'POST',
@@ -33,6 +35,7 @@ export class APILLMClient {
         systemPrompt,
         options,
       }),
+      signal,
     });
 
     if (!response.ok) {
@@ -49,34 +52,39 @@ export class APILLMClient {
     const decoder = new TextDecoder();
     let buffer = '';
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-      for (const line of lines) {
-        if (line.trim()) {
-          try {
-            const chunk: StreamChunk = JSON.parse(line);
-            yield chunk;
-          } catch {
-            // Skip invalid JSON lines
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const chunk: StreamChunk = JSON.parse(line);
+              yield chunk;
+            } catch {
+              // Skip invalid JSON lines
+            }
           }
         }
       }
-    }
 
-    // Process any remaining buffer
-    if (buffer.trim()) {
-      try {
-        const chunk: StreamChunk = JSON.parse(buffer);
-        yield chunk;
-      } catch {
-        // Skip invalid JSON
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        try {
+          const chunk: StreamChunk = JSON.parse(buffer);
+          yield chunk;
+        } catch {
+          // Skip invalid JSON
+        }
       }
+    } finally {
+      // Release the reader lock when done or cancelled
+      reader.releaseLock();
     }
   }
 

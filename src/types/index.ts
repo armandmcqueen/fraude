@@ -64,3 +64,23 @@ export interface PersonaSummary {
   id: string;
   name: string;
 }
+
+// Saved resource for @-mention substitution
+export interface Resource {
+  id: string;
+  name: string;  // Reference name (e.g., "project-context" for @project-context)
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Summary for list view
+export interface ResourceSummary {
+  id: string;
+  name: string;
+}
+
+// User settings (persisted preferences)
+export interface UserSettings {
+  selectedPersonaIds: string[];
+}

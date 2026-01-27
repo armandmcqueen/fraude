@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { ChatView } from '@/components/chat';
-import { useConversations, usePersonas } from '@/hooks';
+import { useConversations, usePersonas, useResources } from '@/hooks';
 import {
   MultiPersonaChatSession,
   TitleService,
@@ -30,6 +30,31 @@ export default function Home() {
     getPersonaName,
     loading: personasLoading,
   } = usePersonas();
+
+  const {
+    resources,
+    fetchFullResource,
+    createResource,
+    updateResource,
+    deleteResource,
+    getResourceByName,
+    loadAllResources,
+    loading: resourcesLoading,
+  } = useResources();
+
+  // Load all resources on mount for substitution
+  useEffect(() => {
+    loadAllResources();
+  }, [loadAllResources]);
+
+  // Get resource content by name (for @mention substitution)
+  const getResourceContent = useCallback(
+    (name: string): string | undefined => {
+      const resource = getResourceByName(name);
+      return resource?.content;
+    },
+    [getResourceByName]
+  );
 
   // Create services once (memoized)
   const session = useMemo(() => {
@@ -95,6 +120,13 @@ export default function Home() {
         onPersonaMoveDown={moveDown}
         personasLoading={personasLoading}
         getPersonaName={getPersonaName}
+        resources={resources}
+        onResourceFetch={fetchFullResource}
+        onResourceCreate={createResource}
+        onResourceUpdate={updateResource}
+        onResourceDelete={deleteResource}
+        resourcesLoading={resourcesLoading}
+        getResourceContent={getResourceContent}
       />
     </div>
   );

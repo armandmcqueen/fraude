@@ -12,6 +12,7 @@ export interface ChatSessionInterface {
   createNewConversation(model?: string): void;
   setModel(model: string): void;
   sendMessage(content: string): Promise<void>;
+  cancel(): void;
 }
 
 /**
@@ -29,6 +30,9 @@ export interface ChatSessionEvents {
 
   /** Fired when streaming completes */
   streamEnd: { messageId: string };
+
+  /** Fired when streaming is cancelled by user */
+  streamCancelled: { messageId: string };
 
   /** Fired on errors */
   error: Error;

@@ -90,6 +90,10 @@ export function useChat(session: ChatSessionInterface, options?: UseChatOptions)
     [session]
   );
 
+  const cancel = useCallback(() => {
+    session.cancel();
+  }, [session]);
+
   return {
     conversation,
     isStreaming,
@@ -98,5 +102,6 @@ export function useChat(session: ChatSessionInterface, options?: UseChatOptions)
     createNewConversation,
     sendMessage,
     setModel,
+    cancel,
   };
 }
