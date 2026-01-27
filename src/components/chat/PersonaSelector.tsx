@@ -13,6 +13,8 @@ interface PersonaSelectorProps {
   onMoveDown: (id: string) => void;
   disabled?: boolean;
   loading?: boolean;
+  /** When true, removes outer padding/border for embedding in modal */
+  embedded?: boolean;
 }
 
 export function PersonaSelector({
@@ -25,6 +27,7 @@ export function PersonaSelector({
   onMoveDown,
   disabled,
   loading,
+  embedded,
 }: PersonaSelectorProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -69,10 +72,12 @@ export function PersonaSelector({
   const unselectedPersonas = personas.filter((p) => !selectedIds.includes(p.id));
 
   return (
-    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-      <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-        Personas (response order)
-      </div>
+    <div className={embedded ? '' : 'px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}>
+      {!embedded && (
+        <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+          Personas (response order)
+        </div>
+      )}
 
       {/* Selected personas in order */}
       <div className="flex flex-wrap gap-2 mb-2">

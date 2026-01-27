@@ -11,6 +11,8 @@ interface ResourceManagerProps {
   onDelete: (id: string) => void;
   disabled?: boolean;
   loading?: boolean;
+  /** When true, removes outer padding/border and expand/collapse for embedding in modal */
+  embedded?: boolean;
 }
 
 export function ResourceManager({
@@ -21,8 +23,9 @@ export function ResourceManager({
   onDelete,
   disabled,
   loading,
+  embedded,
 }: ResourceManagerProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(embedded ?? false);
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
@@ -93,29 +96,34 @@ export function ResourceManager({
     );
   }
 
-  return (
-    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-      {/* Header with expand/collapse */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 w-full"
-      >
-        <svg
-          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-        Resources ({resources.length})
-        <span className="text-xs text-gray-400 dark:text-gray-500 font-normal ml-1">
-          Use @name to insert
-        </span>
-      </button>
+  // When embedded, always show expanded without the collapsible header
+  const showContent = embedded || isExpanded;
 
-      {isExpanded && (
-        <div className="mt-2">
+  return (
+    <div className={embedded ? '' : 'px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}>
+      {/* Header with expand/collapse (only in non-embedded mode) */}
+      {!embedded && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 w-full"
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          Resources ({resources.length})
+          <span className="text-xs text-gray-400 dark:text-gray-500 font-normal ml-1">
+            Use @name to insert
+          </span>
+        </button>
+      )}
+
+      {showContent && (
+        <div className={embedded ? '' : 'mt-2'}>
           {/* Resource list */}
           {resources.length > 0 && (
             <div className="space-y-1 mb-2">

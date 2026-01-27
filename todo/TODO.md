@@ -61,7 +61,7 @@
 - [ ] Autocomplete/suggested options for @mentions in input area
 
 ### UI Polish
-- [ ] Move conversation config to a modal or collapsible section to reduce space usage
+- [x] Move conversation config to a modal or collapsible section to reduce space usage
 - [ ] Add loading states/skeletons
 - [ ] Improve error handling UI
 - [ ] Add conversation search
