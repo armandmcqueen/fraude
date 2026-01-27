@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useChat } from '@/hooks';
 import { ChatSessionInterface } from '@/services';
 import { ConversationConfig } from '@/services/orchestration';
+import { PersonaSummary } from '@/types';
 import { MessageList } from './MessageList';
 import { InputArea } from './InputArea';
 import { ConfigPanel } from './ConfigPanel';
@@ -16,6 +17,15 @@ interface ChatViewProps {
   // Optional config support for multi-persona mode
   config?: ConversationConfig;
   onConfigChange?: (config: ConversationConfig) => void;
+  // Persona props
+  personas?: PersonaSummary[];
+  selectedPersonaIds?: string[];
+  onPersonaToggle?: (id: string) => void;
+  onPersonaCreate?: (name: string, systemPrompt: string) => Promise<unknown>;
+  onPersonaDelete?: (id: string) => void;
+  personasLoading?: boolean;
+  // Function to get persona name by ID
+  getPersonaName?: (id: string) => string;
 }
 
 export function ChatView({
@@ -24,6 +34,13 @@ export function ChatView({
   onConversationUpdate,
   config,
   onConfigChange,
+  personas,
+  selectedPersonaIds,
+  onPersonaToggle,
+  onPersonaCreate,
+  onPersonaDelete,
+  personasLoading,
+  getPersonaName,
 }: ChatViewProps) {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const {
@@ -79,6 +96,12 @@ export function ChatView({
           config={config}
           onChange={onConfigChange}
           disabled={isStreaming}
+          personas={personas}
+          selectedPersonaIds={selectedPersonaIds}
+          onPersonaToggle={onPersonaToggle}
+          onPersonaCreate={onPersonaCreate}
+          onPersonaDelete={onPersonaDelete}
+          personasLoading={personasLoading}
         />
       )}
 
@@ -90,7 +113,7 @@ export function ChatView({
       )}
 
       {/* Messages */}
-      <MessageList messages={conversation.messages} isStreaming={isStreaming} />
+      <MessageList messages={conversation.messages} isStreaming={isStreaming} getPersonaName={getPersonaName} />
 
       {/* Input */}
       <InputArea

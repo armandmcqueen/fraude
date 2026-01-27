@@ -1,19 +1,19 @@
-import { Conversation, Message } from '@/types';
+import { Conversation, Message, Persona } from '@/types';
 
-export interface Persona {
-  id: string;
-  name: string;
-  systemPrompt: string;
-}
+// Re-export Persona from @/types for backwards compatibility
+export type { Persona } from '@/types';
+
+// Simple persona type for orchestration (subset of full Persona)
+export type OrchestrationPersona = Pick<Persona, 'id' | 'name' | 'systemPrompt'>;
 
 export interface OrchestrationContext {
-  personas: Persona[];
+  personas: OrchestrationPersona[];
   conversation: Conversation;
   userMessage: Message;
 }
 
 // The response plan is an ordered list of personas that should respond
-export type ResponsePlan = Persona[];
+export type ResponsePlan = OrchestrationPersona[];
 
 export interface Orchestrator {
   /**

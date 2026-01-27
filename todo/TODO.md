@@ -1,12 +1,23 @@
 # Fraude TODO
 
 ## Current Status
-**Phase**: Multi-persona conversations implemented
+**Phase**: Persona management implemented
 **Next up**: Testing or UI polish
 
 ---
 
 ## TODO List
+
+### Persona Management (Completed)
+- [x] Add Persona types with persistence (id, name, systemPrompt, createdAt, updatedAt)
+- [x] Create persona storage layer (JsonPersonaStorageProvider, APIPersonaStorageClient)
+- [x] Add persona API routes (GET/POST /api/storage/personas, GET/DELETE /api/storage/personas/[id])
+- [x] Create usePersonas hook for fetching, selecting, creating, and deleting personas
+- [x] Create PersonaSelector component with checkboxes, create form, and delete buttons
+- [x] Integrate persona selection into ConfigPanel
+- [x] Lazy prepopulation of default personas (Optimist, Critic) on first access
+- [x] Connect persona selection to session via setPersonas() method
+- [x] Pass dynamic getPersonaName to Message component for display
 
 ### Multi-Persona Conversations (Completed)
 - [x] Add Persona types and orchestration layer
@@ -15,6 +26,10 @@
 - [x] Update Message component to display persona name
 - [x] Add ConfigPanel for switching between execution modes
 - [x] Test both sequential and parallel execution
+
+### Persona Enhancements
+- [ ] Auto-generate persona description from system prompt (use LLM to create a short summary for display)
+- [ ] Allow users to reorder personas (drag-and-drop or up/down buttons) to control response order
 
 ### Known Issues
 - [ ] **Auto-scroll hitch**: When scrolling up during streaming, there's a small hitch/stutter before auto-scroll disables. The current implementation tracks scroll direction and disables auto-scroll on upward scroll, but there's a brief fight between user scroll and auto-scroll. Potential fixes to try:

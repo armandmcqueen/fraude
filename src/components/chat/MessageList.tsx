@@ -7,9 +7,10 @@ import { Message } from './Message';
 interface MessageListProps {
   messages: MessageType[];
   isStreaming: boolean;
+  getPersonaName?: (id: string) => string;
 }
 
-export function MessageList({ messages, isStreaming }: MessageListProps) {
+export function MessageList({ messages, isStreaming, getPersonaName }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const autoScrollEnabled = useRef(true);
@@ -77,6 +78,7 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
             key={message.id}
             message={message}
             isStreaming={isActivelyStreaming}
+            getPersonaName={getPersonaName}
           />
         );
       })}

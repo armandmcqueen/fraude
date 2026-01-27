@@ -5,15 +5,17 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message as MessageType } from '@/types';
-import { getPersonaName } from '@/lib/personas';
+import { getPersonaName as getDefaultPersonaName } from '@/lib/personas';
 
 interface MessageProps {
   message: MessageType;
   isStreaming?: boolean;
+  getPersonaName?: (id: string) => string;
 }
 
-export function Message({ message, isStreaming }: MessageProps) {
+export function Message({ message, isStreaming, getPersonaName }: MessageProps) {
   const isUser = message.role === 'user';
+  const resolvePersonaName = getPersonaName || getDefaultPersonaName;
 
   return (
     <div
@@ -28,7 +30,7 @@ export function Message({ message, isStreaming }: MessageProps) {
       >
         {!isUser && message.personaId && (
           <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            {getPersonaName(message.personaId)}
+            {resolvePersonaName(message.personaId)}
           </div>
         )}
         {isUser ? (

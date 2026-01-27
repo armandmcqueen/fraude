@@ -1,6 +1,7 @@
-import { Persona } from '@/services/orchestration';
+import { Persona } from '@/types';
 
-export const PERSONAS: Persona[] = [
+// Default personas used for prepopulation
+export const DEFAULT_PERSONAS: Omit<Persona, 'createdAt' | 'updatedAt'>[] = [
   {
     id: 'optimist',
     name: 'Optimist',
@@ -15,8 +16,12 @@ export const PERSONAS: Persona[] = [
   },
 ];
 
-export function getPersonaById(id: string): Persona | undefined {
-  return PERSONAS.find((persona) => persona.id === id);
+// Legacy export for backwards compatibility during transition
+export const PERSONAS = DEFAULT_PERSONAS;
+
+// Legacy helper functions (use usePersonas hook for dynamic lookup)
+export function getPersonaById(id: string): Omit<Persona, 'createdAt' | 'updatedAt'> | undefined {
+  return DEFAULT_PERSONAS.find((persona) => persona.id === id);
 }
 
 export function getPersonaName(personaId: string): string {

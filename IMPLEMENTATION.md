@@ -16,10 +16,11 @@ fraude/
 │   │       ├── complete/route.ts # Non-streaming completion (Anthropic SDK)
 │   │       ├── llm-calls/        # LLM call recording inspector API
 │   │       └── storage/
-│   │           └── conversations/  # CRUD for conversations
+│   │           ├── conversations/  # CRUD for conversations
+│   │           └── personas/       # CRUD for personas
 │   │
 │   ├── components/
-│   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector, ConfigPanel
+│   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector, ConfigPanel, PersonaSelector
 │   │   ├── inspector/            # LLMInspector (dev panel for viewing LLM calls)
 │   │   └── sidebar/              # Sidebar, ConversationItem
 │   │
@@ -33,8 +34,9 @@ fraude/
 │   │   │   ├── APILLMClient.ts   # HTTP client for /api/chat, /api/complete
 │   │   │   └── index.ts
 │   │   ├── storage/
-│   │   │   ├── types.ts          # StorageClient interface
+│   │   │   ├── types.ts          # StorageClient, PersonaStorageClient interfaces
 │   │   │   ├── APIStorageClient.ts
+│   │   │   ├── APIPersonaStorageClient.ts  # HTTP client for persona CRUD
 │   │   │   ├── InMemoryStorageClient.ts  # For testing
 │   │   │   └── index.ts
 │   │   ├── prompt/
@@ -51,13 +53,18 @@ fraude/
 │   │   ├── config.ts             # API keys, model IDs, defaults
 │   │   ├── llm-recorder.ts       # Records LLM calls to disk
 │   │   ├── logger.ts             # Logging wrapper (log.debug/info/warn/error)
-│   │   ├── personas.ts           # Hardcoded persona definitions (Optimist, Critic)
+│   │   ├── personas.ts           # Default persona definitions for prepopulation
 │   │   ├── utils.ts              # generateId, etc.
 │   │   └── storage/              # Server-side JSON storage
+│   │       ├── types.ts          # StorageProvider, PersonaStorageProvider interfaces
+│   │       ├── json-storage.ts   # JSON file storage for conversations
+│   │       ├── json-persona-storage.ts  # JSON file storage for personas
+│   │       └── index.ts
 │   │
 │   ├── hooks/                    # Thin React wrappers
 │   │   ├── useChat.ts            # Subscribes to ChatSession events
 │   │   ├── useConversations.ts   # Fetches conversation list
+│   │   ├── usePersonas.ts        # Persona fetching, selection, create/delete
 │   │   └── index.ts
 │   │
 │   └── types/                    # Shared TypeScript types
@@ -65,6 +72,7 @@ fraude/
 │
 ├── data/
 │   ├── conversations/            # JSON conversation storage
+│   ├── personas/                 # JSON persona storage
 │   └── llm-calls/                # LLM call recordings (per conversation)
 │
 ├── tests/
@@ -118,6 +126,21 @@ interface StreamChunk {
 interface LLMOptions {
   model: string;
   maxTokens?: number;
+}
+
+// Persona (stored)
+interface Persona {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// PersonaSummary (for list view)
+interface PersonaSummary {
+  id: string;
+  name: string;
 }
 
 // LLM Call Recording
@@ -284,6 +307,18 @@ Response: `Conversation`
 
 ### PUT /api/storage/conversations/[id]
 Request: `Conversation`
+
+### GET /api/storage/personas
+Response: `PersonaSummary[]` (prepopulates defaults if empty)
+
+### POST /api/storage/personas
+Request: `Persona`
+
+### GET /api/storage/personas/[id]
+Response: `Persona`
+
+### DELETE /api/storage/personas/[id]
+Response: `{ success: true }`
 
 ## Testing
 

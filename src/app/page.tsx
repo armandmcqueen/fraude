@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { ChatView } from '@/components/chat';
-import { useConversations } from '@/hooks';
+import { useConversations, usePersonas } from '@/hooks';
 import {
   MultiPersonaChatSession,
   TitleService,
@@ -13,12 +13,21 @@ import {
   ConversationConfig,
   DEFAULT_CONFIG,
 } from '@/services';
-import { PERSONAS } from '@/lib/personas';
 
 export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [config, setConfig] = useState<ConversationConfig>(DEFAULT_CONFIG);
   const { conversations, loading, refresh } = useConversations();
+  const {
+    personas,
+    selectedIds,
+    selectedPersonas,
+    toggleSelection,
+    createPersona,
+    deletePersona,
+    getPersonaName,
+    loading: personasLoading,
+  } = usePersonas();
 
   // Create services once (memoized)
   const session = useMemo(() => {
@@ -30,10 +39,17 @@ export default function Home() {
       llmClient,
       storageClient,
       titleService,
-      personas: PERSONAS,
+      personas: [], // Start empty, will be updated via useEffect
       orchestrator: sequentialOrchestrator,
     });
   }, []);
+
+  // Update session personas when selection changes
+  useEffect(() => {
+    if (selectedPersonas.length > 0) {
+      session.setPersonas(selectedPersonas);
+    }
+  }, [selectedPersonas, session]);
 
   // Update session config when state changes
   const handleConfigChange = useCallback(
@@ -68,6 +84,13 @@ export default function Home() {
         onConversationUpdate={refresh}
         config={config}
         onConfigChange={handleConfigChange}
+        personas={personas}
+        selectedPersonaIds={selectedIds}
+        onPersonaToggle={toggleSelection}
+        onPersonaCreate={createPersona}
+        onPersonaDelete={deletePersona}
+        personasLoading={personasLoading}
+        getPersonaName={getPersonaName}
       />
     </div>
   );

@@ -3,16 +3,15 @@ import { APILLMClient } from './llm';
 import { StorageClient } from './storage/types';
 import { TitleService } from './TitleService';
 import { EventEmitter, ChatSessionEvents } from './types';
-import { Persona, Orchestrator, ConversationConfig, DEFAULT_CONFIG } from './orchestration';
+import { OrchestrationPersona, Orchestrator, ConversationConfig, DEFAULT_CONFIG } from './orchestration';
 import { generateId } from '@/lib/utils';
 import { config } from '@/lib/config';
-import { getPersonaName } from '@/lib/personas';
 
 export interface MultiPersonaChatSessionDeps {
   llmClient: APILLMClient;
   storageClient: StorageClient;
   titleService: TitleService;
-  personas: Persona[];
+  personas: OrchestrationPersona[];
   orchestrator: Orchestrator;
   config?: ConversationConfig;
 }
@@ -28,7 +27,8 @@ export class MultiPersonaChatSession {
   private llmClient: APILLMClient;
   private storageClient: StorageClient;
   private titleService: TitleService;
-  private personas: Persona[];
+  private personas: OrchestrationPersona[];
+  private personaNameMap: Map<string, string> = new Map();
   private orchestrator: Orchestrator;
   private conversationConfig: ConversationConfig;
   private isStreaming = false;
@@ -40,6 +40,32 @@ export class MultiPersonaChatSession {
     this.personas = deps.personas;
     this.orchestrator = deps.orchestrator;
     this.conversationConfig = deps.config ?? DEFAULT_CONFIG;
+    this.updatePersonaNameMap();
+  }
+
+  /**
+   * Update the internal persona name lookup map.
+   */
+  private updatePersonaNameMap(): void {
+    this.personaNameMap.clear();
+    for (const persona of this.personas) {
+      this.personaNameMap.set(persona.id, persona.name);
+    }
+  }
+
+  /**
+   * Get the display name for a persona ID.
+   */
+  getPersonaName(personaId: string): string {
+    return this.personaNameMap.get(personaId) ?? personaId;
+  }
+
+  /**
+   * Update the list of personas.
+   */
+  setPersonas(personas: OrchestrationPersona[]): void {
+    this.personas = [...personas];
+    this.updatePersonaNameMap();
   }
 
   getConversation(): Conversation | null {
@@ -152,7 +178,7 @@ export class MultiPersonaChatSession {
   /**
    * Execute personas sequentially, one at a time.
    */
-  private async executeSequential(personas: Persona[]): Promise<void> {
+  private async executeSequential(personas: OrchestrationPersona[]): Promise<void> {
     for (const persona of personas) {
       await this.streamPersonaResponse(persona);
     }
@@ -162,7 +188,7 @@ export class MultiPersonaChatSession {
    * Execute personas in parallel, all at once.
    * Note: parallel mode always uses isolated context.
    */
-  private async executeParallel(personas: Persona[]): Promise<void> {
+  private async executeParallel(personas: OrchestrationPersona[]): Promise<void> {
     if (!this.conversation) return;
 
     // Capture the conversation state before any responses
@@ -204,7 +230,7 @@ export class MultiPersonaChatSession {
   /**
    * Stream a response from a single persona (sequential mode).
    */
-  private async streamPersonaResponse(persona: Persona): Promise<void> {
+  private async streamPersonaResponse(persona: OrchestrationPersona): Promise<void> {
     if (!this.conversation) return;
 
     // Create placeholder message for this persona
@@ -265,7 +291,7 @@ export class MultiPersonaChatSession {
    * Uses pre-created message and pre-captured history.
    */
   private async streamPersonaResponseParallel(
-    persona: Persona,
+    persona: OrchestrationPersona,
     personaMessage: Message,
     historySnapshot: string
   ): Promise<void> {
@@ -320,7 +346,7 @@ export class MultiPersonaChatSession {
         lines.push(`[User]: ${msg.content}`);
       } else if (msg.personaId && !isolatedContext) {
         // Only include other personas' messages if not isolated
-        const name = getPersonaName(msg.personaId);
+        const name = this.getPersonaName(msg.personaId);
         lines.push(`[${name}]: ${msg.content}`);
       }
     }
@@ -330,7 +356,7 @@ export class MultiPersonaChatSession {
   /**
    * Build system prompt that includes persona instructions and format explanation.
    */
-  private buildSystemPrompt(persona: Persona, isolated: boolean): string {
+  private buildSystemPrompt(persona: OrchestrationPersona, isolated: boolean): string {
     if (isolated) {
       return `You are the "${persona.name}" persona.
 

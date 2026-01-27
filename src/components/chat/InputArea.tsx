@@ -2,6 +2,7 @@
 
 import { useState, useCallback, KeyboardEvent } from 'react';
 import { ModelSelector } from './ModelSelector';
+import { expandTestInput } from '@/lib/test-inputs';
 
 interface InputAreaProps {
   onSend: (content: string) => void;
@@ -21,7 +22,9 @@ export function InputArea({
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
     if (trimmed && !disabled) {
-      onSend(trimmed);
+      // Expand slash commands to test inputs (e.g., /1 → "What is 2 + 2?")
+      const expanded = expandTestInput(trimmed);
+      onSend(expanded);
       setInput('');
     }
   }, [input, disabled, onSend]);

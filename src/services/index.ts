@@ -16,8 +16,8 @@ export type { ChatSessionEvents, ChatSessionInterface } from './types';
 export { APILLMClient } from './llm';
 
 // Storage (client-side)
-export type { StorageClient } from './storage';
-export { APIStorageClient, InMemoryStorageClient } from './storage';
+export type { StorageClient, PersonaStorageClient } from './storage';
+export { APIStorageClient, InMemoryStorageClient, APIPersonaStorageClient } from './storage';
 
 // Prompt (client-side)
 export type { PromptProvider } from './prompt';

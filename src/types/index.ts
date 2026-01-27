@@ -49,3 +49,18 @@ export interface PromptContext {
   conversationId?: string;
   model: string;
 }
+
+// Persona types
+export interface Persona {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Summary for list view (without full system prompt)
+export interface PersonaSummary {
+  id: string;
+  name: string;
+}
