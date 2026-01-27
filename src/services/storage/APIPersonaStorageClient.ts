@@ -49,6 +49,18 @@ export class APIPersonaStorageClient implements PersonaStorageClient {
     }
   }
 
+  async updatePersona(persona: Persona): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/${persona.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(persona),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update persona');
+    }
+  }
+
   async deletePersona(id: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/${id}`, {
       method: 'DELETE',

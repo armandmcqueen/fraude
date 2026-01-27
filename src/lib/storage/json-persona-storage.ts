@@ -115,6 +115,11 @@ export class JsonPersonaStorageProvider implements PersonaStorageProvider {
     await fs.writeFile(filePath, JSON.stringify(persona, null, 2), 'utf-8');
   }
 
+  async updatePersona(persona: Persona): Promise<void> {
+    const filePath = this.getFilePath(persona.id);
+    await fs.writeFile(filePath, JSON.stringify(persona, null, 2), 'utf-8');
+  }
+
   async deletePersona(id: string): Promise<void> {
     try {
       const filePath = this.getFilePath(id);

@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { PersonaSummary } from '@/types';
+import { useState, useEffect } from 'react';
+import { PersonaSummary, Persona } from '@/types';
 
 interface PersonaSelectorProps {
   personas: PersonaSummary[];
   selectedIds: string[];
   onToggle: (id: string) => void;
+  onFetchPersona?: (id: string) => Promise<Persona | null>;
   onCreate: (name: string, systemPrompt: string) => Promise<unknown>;
+  onUpdate?: (id: string, name: string, systemPrompt: string) => Promise<unknown>;
   onDelete: (id: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
@@ -21,7 +23,9 @@ export function PersonaSelector({
   personas,
   selectedIds,
   onToggle,
+  onFetchPersona,
   onCreate,
+  onUpdate,
   onDelete,
   onMoveUp,
   onMoveDown,
@@ -30,32 +34,75 @@ export function PersonaSelector({
   embedded,
 }: PersonaSelectorProps) {
   const [isCreating, setIsCreating] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newPrompt, setNewPrompt] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formPrompt, setFormPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingPersona, setIsLoadingPersona] = useState(false);
+
+  // Load persona data when editing
+  useEffect(() => {
+    if (editingId && onFetchPersona) {
+      setIsLoadingPersona(true);
+      onFetchPersona(editingId).then((persona) => {
+        if (persona) {
+          setFormName(persona.name);
+          setFormPrompt(persona.systemPrompt);
+        }
+        setIsLoadingPersona(false);
+      });
+    }
+  }, [editingId, onFetchPersona]);
 
   const handleCreate = async () => {
-    if (!newName.trim() || !newPrompt.trim()) return;
+    if (!formName.trim() || !formPrompt.trim()) return;
 
     setIsSubmitting(true);
     try {
-      await onCreate(newName.trim(), newPrompt.trim());
-      setNewName('');
-      setNewPrompt('');
-      setIsCreating(false);
+      await onCreate(formName.trim(), formPrompt.trim());
+      resetForm();
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCancel = () => {
-    setNewName('');
-    setNewPrompt('');
+  const handleUpdate = async () => {
+    if (!editingId || !formName.trim() || !formPrompt.trim() || !onUpdate) return;
+
+    setIsSubmitting(true);
+    try {
+      await onUpdate(editingId, formName.trim(), formPrompt.trim());
+      resetForm();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormName('');
+    setFormPrompt('');
     setIsCreating(false);
+    setEditingId(null);
+  };
+
+  const handleEdit = (id: string) => {
+    setIsCreating(false);
+    setEditingId(id);
+    // Form will be populated by useEffect
+  };
+
+  const handleStartCreate = () => {
+    setEditingId(null);
+    setFormName('');
+    setFormPrompt('');
+    setIsCreating(true);
   };
 
   // Default persona IDs that cannot be deleted
   const defaultIds = ['optimist', 'critic'];
+
+  // Check if editing is supported
+  const canEdit = onFetchPersona !== undefined && onUpdate !== undefined;
 
   if (loading) {
     return (
@@ -70,6 +117,8 @@ export function PersonaSelector({
     .map((id) => personas.find((p) => p.id === id))
     .filter((p): p is PersonaSummary => p !== undefined);
   const unselectedPersonas = personas.filter((p) => !selectedIds.includes(p.id));
+
+  const isFormOpen = isCreating || editingId !== null;
 
   return (
     <div className={embedded ? '' : 'px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}>
@@ -126,12 +175,26 @@ export function PersonaSelector({
                 {persona.name}
               </span>
 
+              {/* Edit button */}
+              {canEdit && (
+                <button
+                  onClick={() => handleEdit(persona.id)}
+                  disabled={disabled}
+                  className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 disabled:opacity-50"
+                  title="Edit persona"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              )}
+
               {/* Deselect button */}
               {canDeselect && (
                 <button
                   onClick={() => onToggle(persona.id)}
                   disabled={disabled}
-                  className="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
                   title="Remove from selection"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,11 +246,24 @@ export function PersonaSelector({
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {persona.name}
                 </span>
+                {/* Edit button */}
+                {canEdit && (
+                  <button
+                    onClick={() => handleEdit(persona.id)}
+                    disabled={disabled}
+                    className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 disabled:opacity-50"
+                    title="Edit persona"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
                 {canDelete && (
                   <button
                     onClick={() => onDelete(persona.id)}
                     disabled={disabled}
-                    className="ml-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
+                    className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
                     title="Delete persona"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,10 +277,56 @@ export function PersonaSelector({
         </div>
       )}
 
+      {/* Create/Edit form */}
+      {isFormOpen && (
+        <div className="mt-2 p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
+          {isLoadingPersona ? (
+            <div className="text-sm text-gray-500 dark:text-gray-400 py-2">
+              Loading persona...
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Persona name"
+                disabled={isSubmitting}
+                className="w-full mb-2 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50"
+              />
+              <textarea
+                value={formPrompt}
+                onChange={(e) => setFormPrompt(e.target.value)}
+                placeholder="System prompt (describe the persona's perspective and behavior)"
+                disabled={isSubmitting}
+                rows={3}
+                className="w-full mb-2 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50 resize-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={editingId ? handleUpdate : handleCreate}
+                  disabled={isSubmitting || !formName.trim() || !formPrompt.trim()}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Saving...' : editingId ? 'Update' : 'Create'}
+                </button>
+                <button
+                  onClick={resetForm}
+                  disabled={isSubmitting}
+                  className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Add button */}
-      {!isCreating && (
+      {!isFormOpen && (
         <button
-          onClick={() => setIsCreating(true)}
+          onClick={handleStartCreate}
           disabled={disabled}
           className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
         >
@@ -213,44 +335,6 @@ export function PersonaSelector({
           </svg>
           New Persona
         </button>
-      )}
-
-      {/* Create form */}
-      {isCreating && (
-        <div className="mt-2 p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Persona name"
-            disabled={isSubmitting}
-            className="w-full mb-2 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50"
-          />
-          <textarea
-            value={newPrompt}
-            onChange={(e) => setNewPrompt(e.target.value)}
-            placeholder="System prompt (describe the persona's perspective and behavior)"
-            disabled={isSubmitting}
-            rows={3}
-            className="w-full mb-2 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50 resize-none"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleCreate}
-              disabled={isSubmitting || !newName.trim() || !newPrompt.trim()}
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Creating...' : 'Create'}
-            </button>
-            <button
-              onClick={handleCancel}
-              disabled={isSubmitting}
-              className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
       )}
     </div>
   );

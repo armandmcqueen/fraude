@@ -18,6 +18,31 @@ export async function GET(
   return NextResponse.json(persona);
 }
 
+// PUT /api/storage/personas/[id] - Update a persona
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  // Check if persona exists
+  const existing = await storage.getPersona(id);
+  if (!existing) {
+    return NextResponse.json({ error: 'Persona not found' }, { status: 404 });
+  }
+
+  const body = await request.json();
+  const updatedPersona = {
+    ...existing,
+    name: body.name ?? existing.name,
+    systemPrompt: body.systemPrompt ?? existing.systemPrompt,
+    updatedAt: new Date(),
+  };
+
+  await storage.updatePersona(updatedPersona);
+  return NextResponse.json(updatedPersona);
+}
+
 // DELETE /api/storage/personas/[id] - Delete a persona
 export async function DELETE(
   _request: NextRequest,

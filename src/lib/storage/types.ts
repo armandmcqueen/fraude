@@ -11,6 +11,7 @@ export interface PersonaStorageProvider {
   listPersonas(): Promise<PersonaSummary[]>;
   getPersona(id: string): Promise<Persona | null>;
   createPersona(persona: Persona): Promise<void>;
+  updatePersona(persona: Persona): Promise<void>;
   deletePersona(id: string): Promise<void>;
   ensureDefaultPersonas(): Promise<void>;
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ConversationConfig, CONFIG_PRESETS } from '@/services/orchestration';
-import { PersonaSummary, ResourceSummary, Resource } from '@/types';
+import { PersonaSummary, ResourceSummary, Resource, Persona } from '@/types';
 import { PersonaSelector } from './PersonaSelector';
 import { ResourceManager } from './ResourceManager';
 
@@ -18,7 +18,9 @@ interface SettingsModalProps {
   personas?: PersonaSummary[];
   selectedPersonaIds?: string[];
   onPersonaToggle?: (id: string) => void;
+  onPersonaFetch?: (id: string) => Promise<Persona | null>;
   onPersonaCreate?: (name: string, systemPrompt: string) => Promise<unknown>;
+  onPersonaUpdate?: (id: string, name: string, systemPrompt: string) => Promise<unknown>;
   onPersonaDelete?: (id: string) => void;
   onPersonaMoveUp?: (id: string) => void;
   onPersonaMoveDown?: (id: string) => void;
@@ -41,7 +43,9 @@ export function SettingsModal({
   personas,
   selectedPersonaIds,
   onPersonaToggle,
+  onPersonaFetch,
   onPersonaCreate,
+  onPersonaUpdate,
   onPersonaDelete,
   onPersonaMoveUp,
   onPersonaMoveDown,
@@ -142,7 +146,9 @@ export function SettingsModal({
                 personas={personas}
                 selectedIds={selectedPersonaIds}
                 onToggle={onPersonaToggle}
+                onFetchPersona={onPersonaFetch}
                 onCreate={onPersonaCreate}
+                onUpdate={onPersonaUpdate}
                 onDelete={onPersonaDelete}
                 onMoveUp={onPersonaMoveUp}
                 onMoveDown={onPersonaMoveDown}

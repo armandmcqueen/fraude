@@ -149,6 +149,34 @@ export function usePersonas() {
     [fetchPersonas]
   );
 
+  // Update a persona
+  const updatePersona = useCallback(
+    async (id: string, name: string, systemPrompt: string) => {
+      const existing = await personaClient.getPersona(id);
+      if (!existing) {
+        throw new Error('Persona not found');
+      }
+
+      const updated: Persona = {
+        ...existing,
+        name,
+        systemPrompt,
+        updatedAt: new Date(),
+      };
+
+      await personaClient.updatePersona(updated);
+
+      // Update cache
+      setFullPersonas((prev) => new Map(prev).set(id, updated));
+
+      // Refresh list to update names
+      await fetchPersonas();
+
+      return updated;
+    },
+    [fetchPersonas]
+  );
+
   // Delete a persona
   const deletePersona = useCallback(
     async (id: string) => {
@@ -219,7 +247,9 @@ export function usePersonas() {
     selectedIds,
     setSelectedIds,
     selectedPersonas,
+    fetchFullPersona,
     createPersona,
+    updatePersona,
     deletePersona,
     toggleSelection,
     moveUp,

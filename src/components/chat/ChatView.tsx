@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useChat } from '@/hooks';
 import { ChatSessionInterface } from '@/services';
 import { ConversationConfig } from '@/services/orchestration';
-import { PersonaSummary, ResourceSummary, Resource } from '@/types';
+import { PersonaSummary, ResourceSummary, Resource, Persona } from '@/types';
 import { MessageList } from './MessageList';
 import { InputArea } from './InputArea';
 import { SettingsModal } from './SettingsModal';
@@ -21,7 +21,9 @@ interface ChatViewProps {
   personas?: PersonaSummary[];
   selectedPersonaIds?: string[];
   onPersonaToggle?: (id: string) => void;
+  onPersonaFetch?: (id: string) => Promise<Persona | null>;
   onPersonaCreate?: (name: string, systemPrompt: string) => Promise<unknown>;
+  onPersonaUpdate?: (id: string, name: string, systemPrompt: string) => Promise<unknown>;
   onPersonaDelete?: (id: string) => void;
   onPersonaMoveUp?: (id: string) => void;
   onPersonaMoveDown?: (id: string) => void;
@@ -48,7 +50,9 @@ export function ChatView({
   personas,
   selectedPersonaIds,
   onPersonaToggle,
+  onPersonaFetch,
   onPersonaCreate,
+  onPersonaUpdate,
   onPersonaDelete,
   onPersonaMoveUp,
   onPersonaMoveDown,
@@ -170,7 +174,9 @@ export function ChatView({
           personas={personas}
           selectedPersonaIds={selectedPersonaIds}
           onPersonaToggle={onPersonaToggle}
+          onPersonaFetch={onPersonaFetch}
           onPersonaCreate={onPersonaCreate}
+          onPersonaUpdate={onPersonaUpdate}
           onPersonaDelete={onPersonaDelete}
           onPersonaMoveUp={onPersonaMoveUp}
           onPersonaMoveDown={onPersonaMoveDown}

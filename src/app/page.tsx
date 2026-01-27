@@ -22,8 +22,10 @@ export default function Home() {
     personas,
     selectedIds,
     selectedPersonas,
+    fetchFullPersona,
     toggleSelection,
     createPersona,
+    updatePersona,
     deletePersona,
     moveUp,
     moveDown,
@@ -114,7 +116,9 @@ export default function Home() {
         personas={personas}
         selectedPersonaIds={selectedIds}
         onPersonaToggle={toggleSelection}
+        onPersonaFetch={fetchFullPersona}
         onPersonaCreate={createPersona}
+        onPersonaUpdate={updatePersona}
         onPersonaDelete={deletePersona}
         onPersonaMoveUp={moveUp}
         onPersonaMoveDown={moveDown}

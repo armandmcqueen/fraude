@@ -40,6 +40,11 @@ export interface PersonaStorageClient {
   createPersona(persona: Persona): Promise<void>;
 
   /**
+   * Update an existing persona.
+   */
+  updatePersona(persona: Persona): Promise<void>;
+
+  /**
    * Delete a persona by ID.
    */
   deletePersona(id: string): Promise<void>;
