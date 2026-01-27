@@ -19,14 +19,15 @@ fraude/
 │   │           └── conversations/  # CRUD for conversations
 │   │
 │   ├── components/
-│   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector
+│   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector, ConfigPanel
 │   │   ├── inspector/            # LLMInspector (dev panel for viewing LLM calls)
 │   │   └── sidebar/              # Sidebar, ConversationItem
 │   │
 │   ├── services/                 # Client-side business logic (plain TS)
-│   │   ├── ChatSession.ts        # Core chat orchestration
+│   │   ├── ChatSession.ts        # Core chat orchestration (single persona)
+│   │   ├── MultiActorChatSession.ts # Multi-persona chat orchestration
 │   │   ├── TitleService.ts       # LLM-powered title generation
-│   │   ├── types.ts              # EventEmitter, ChatSessionEvents
+│   │   ├── types.ts              # EventEmitter, ChatSessionEvents, ChatSessionInterface
 │   │   ├── index.ts              # Exports
 │   │   ├── llm/
 │   │   │   ├── APILLMClient.ts   # HTTP client for /api/chat, /api/complete
@@ -36,15 +37,21 @@ fraude/
 │   │   │   ├── APIStorageClient.ts
 │   │   │   ├── InMemoryStorageClient.ts  # For testing
 │   │   │   └── index.ts
-│   │   └── prompt/
-│   │       ├── types.ts          # PromptProvider interface
-│   │       ├── DefaultPromptProvider.ts
+│   │   ├── prompt/
+│   │   │   ├── types.ts          # PromptProvider interface
+│   │   │   ├── DefaultPromptProvider.ts
+│   │   │   └── index.ts
+│   │   └── orchestration/        # Multi-persona orchestration
+│   │       ├── types.ts          # Persona, Orchestrator, ResponsePlan
+│   │       ├── orchestrators.ts  # sequentialOrchestrator, singlePersonaOrchestrator
+│   │       ├── config.ts         # ConversationConfig, CONFIG_PRESETS
 │   │       └── index.ts
 │   │
 │   ├── lib/                      # Utilities and config
 │   │   ├── config.ts             # API keys, model IDs, defaults
 │   │   ├── llm-recorder.ts       # Records LLM calls to disk
 │   │   ├── logger.ts             # Logging wrapper (log.debug/info/warn/error)
+│   │   ├── personas.ts           # Hardcoded persona definitions (Optimist, Critic)
 │   │   ├── utils.ts              # generateId, etc.
 │   │   └── storage/              # Server-side JSON storage
 │   │
@@ -63,7 +70,8 @@ fraude/
 ├── tests/
 │   └── live-llm/                 # Live LLM tests (real API, no UI)
 │       ├── server-utils.ts       # Start/stop Next.js server
-│       └── chat.test.ts          # Chat endpoint tests
+│       ├── chat.test.ts          # Chat endpoint tests
+│       └── multi-actor.test.ts   # Multi-persona execution tests
 │
 ├── vitest.config.ts              # Vitest configuration
 └── ...config files
@@ -78,6 +86,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   createdAt: Date;
+  personaId?: string;  // Which persona sent this (undefined for user messages)
 }
 
 // Conversation
@@ -198,6 +207,25 @@ A developer tool for inspecting LLM calls, accessible via the button in the conv
 5. Emits `conversationUpdated`
 6. useChat updates state, UI renders messages
 
+### Multi-Persona Send Message
+1. User types in InputArea, hits Enter
+2. ChatView calls `session.sendMessage(content)`
+3. MultiPersonaChatSession:
+   - Creates user Message, adds to conversation
+   - Gets response plan from orchestrator (list of personas)
+   - **Sequential mode**: For each persona in order:
+     - Creates placeholder assistant Message with `personaId`
+     - Formats history with `[User]`/`[Persona]` labels
+     - Streams response via `llmClient.streamChat()` → `/api/chat`
+   - **Parallel mode**:
+     - Creates all placeholder messages upfront
+     - Captures history snapshot
+     - Fires all LLM calls simultaneously
+   - Generates title if first exchange
+   - Saves conversation
+4. useChat receives events, updates React state
+5. UI re-renders showing persona names above each response
+
 ## Available Models
 
 ### Chat Models (user-selectable)
@@ -286,6 +314,7 @@ Tests instantiate real services (ChatSession, APILLMClient, TitleService, etc.) 
 - `TitleService` - title generation
 - `ChatSession` - full conversation flow with events, title generation, storage
 - Multi-turn conversations with context
+- `MultiPersonaChatSession` - sequential and parallel persona execution
 
 **Timeouts**:
 - Test timeout: 60s (for LLM response time)

@@ -10,11 +10,14 @@ import {
   APILLMClient,
   APIStorageClient,
   sequentialOrchestrator,
+  ConversationConfig,
+  DEFAULT_CONFIG,
 } from '@/services';
 import { PERSONAS } from '@/lib/personas';
 
 export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [config, setConfig] = useState<ConversationConfig>(DEFAULT_CONFIG);
   const { conversations, loading, refresh } = useConversations();
 
   // Create services once (memoized)
@@ -32,9 +35,19 @@ export default function Home() {
     });
   }, []);
 
+  // Update session config when state changes
+  const handleConfigChange = useCallback(
+    (newConfig: ConversationConfig) => {
+      setConfig(newConfig);
+      session.setConfig(newConfig);
+    },
+    [session]
+  );
+
   const handleNewChat = useCallback(() => {
     setActiveConversationId(null);
-  }, []);
+    session.createNewConversation();
+  }, [session]);
 
   const handleSelectConversation = useCallback((id: string | null) => {
     setActiveConversationId(id);
@@ -53,6 +66,8 @@ export default function Home() {
         session={session}
         conversationId={activeConversationId}
         onConversationUpdate={refresh}
+        config={config}
+        onConfigChange={handleConfigChange}
       />
     </div>
   );

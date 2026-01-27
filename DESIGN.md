@@ -72,7 +72,7 @@ Clear separation between client-side and server-side code.
 ### Client-Side Services
 
 #### ChatSession
-Core business logic for managing a chat conversation. Runs in browser.
+Core business logic for managing a single-persona chat conversation. Runs in browser.
 
 ```typescript
 class ChatSession {
@@ -94,6 +94,59 @@ class ChatSession {
 ```
 
 Emits events (conversationUpdated, streamChunk, streamStart, streamEnd, error) for UI to subscribe.
+
+#### MultiPersonaChatSession
+Extends chat functionality to support multiple personas responding to each user message. Implements the same `ChatSessionInterface` as `ChatSession`.
+
+```typescript
+class MultiPersonaChatSession {
+  readonly events: EventEmitter<ChatSessionEvents>;
+
+  constructor(deps: {
+    llmClient: APILLMClient;
+    storageClient: StorageClient;
+    titleService: TitleService;
+    personas: Persona[];
+    orchestrator: Orchestrator;
+    config?: ConversationConfig;
+  });
+
+  // Same public API as ChatSession
+  getConversation(): Conversation | null;
+  loadConversation(id: string): Promise<void>;
+  createNewConversation(model?: string): void;
+  sendMessage(content: string): Promise<void>;
+  setModel(model: string): void;
+  setConfig(config: ConversationConfig): void;
+}
+```
+
+Key features:
+- **Orchestrator pattern**: Pluggable strategy for determining which personas respond
+- **Execution modes**: Sequential (one after another) or parallel (all at once)
+- **Context modes**: Shared (each persona sees previous responses) or isolated (only sees user messages)
+- **Claude API compatibility**: Formats conversation history with `[User]`/`[Persona]` labels since Claude requires messages ending with user role
+
+#### Orchestration
+
+```typescript
+interface Persona {
+  id: string;
+  name: string;
+  systemPrompt: string;
+}
+
+interface Orchestrator {
+  getResponsePlan(context: OrchestrationContext): ResponsePlan;
+}
+
+type ResponsePlan = Persona[];  // Ordered list of personas to respond
+
+interface ConversationConfig {
+  executionMode: 'sequential' | 'parallel';
+  contextMode: 'shared' | 'isolated';
+}
+```
 
 #### APILLMClient
 HTTP client for LLM operations. Calls server API routes.

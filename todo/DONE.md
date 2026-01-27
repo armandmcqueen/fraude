@@ -2,6 +2,35 @@
 
 Historical record of completed tasks.
 
+## 2026-01-26 - Multi-Persona Conversations
+
+### Orchestration Layer
+- Create `src/services/orchestration/` with types, orchestrators, and config
+- Implement `Persona`, `Orchestrator`, `ResponsePlan`, and `ConversationConfig` types
+- Create `sequentialOrchestrator` and `singlePersonaOrchestrator`
+- Add config presets for sequential/parallel and shared/isolated context modes
+
+### MultiPersonaChatSession
+- Create `src/services/MultiPersonaChatSession.ts` implementing `ChatSessionInterface`
+- Support sequential execution (personas respond one after another)
+- Support parallel execution (all personas respond simultaneously)
+- Support shared context (each persona sees previous responses) and isolated context
+- Format conversation history with `[User]`/`[Persona]` labels for Claude API compatibility
+
+### Personas
+- Create `src/lib/personas.ts` with hardcoded Optimist and Critic personas
+- Each persona has id, name, and system prompt
+
+### UI Updates
+- Update `Message.tsx` to display persona name above assistant messages
+- Create `ConfigPanel.tsx` for switching between execution mode presets
+- Update `page.tsx` to use `MultiPersonaChatSession`
+- Improve auto-scroll behavior in `MessageList.tsx` (direction-based detection)
+
+### Tests
+- Create `tests/live-llm/multi-actor.test.ts` with tests for both sequential and parallel execution
+- Verify parallel mode has interleaved chunks arriving within 2 seconds of each other
+
 ## 2025-01-24 - Live LLM Tests
 
 ### Comprehensive Service Tests

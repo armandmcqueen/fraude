@@ -3,17 +3,28 @@
 import { useEffect, useState } from 'react';
 import { useChat } from '@/hooks';
 import { ChatSessionInterface } from '@/services';
+import { ConversationConfig } from '@/services/orchestration';
 import { MessageList } from './MessageList';
 import { InputArea } from './InputArea';
+import { ConfigPanel } from './ConfigPanel';
 import { LLMInspector } from '@/components/inspector';
 
 interface ChatViewProps {
   session: ChatSessionInterface;
   conversationId: string | null;
   onConversationUpdate?: () => void;
+  // Optional config support for multi-persona mode
+  config?: ConversationConfig;
+  onConfigChange?: (config: ConversationConfig) => void;
 }
 
-export function ChatView({ session, conversationId, onConversationUpdate }: ChatViewProps) {
+export function ChatView({
+  session,
+  conversationId,
+  onConversationUpdate,
+  config,
+  onConfigChange,
+}: ChatViewProps) {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const {
     conversation,
@@ -61,6 +72,15 @@ export function ChatView({ session, conversationId, onConversationUpdate }: Chat
           </svg>
         </button>
       </div>
+
+      {/* Config Panel (only shown if config props provided) */}
+      {config && onConfigChange && (
+        <ConfigPanel
+          config={config}
+          onChange={onConfigChange}
+          disabled={isStreaming}
+        />
+      )}
 
       {/* Error display */}
       {error && (

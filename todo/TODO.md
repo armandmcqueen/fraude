@@ -1,24 +1,27 @@
 # Fraude TODO
 
 ## Current Status
-**Phase**: Core app and developer tooling complete
-**Next up**: Multi-actor conversations or testing
+**Phase**: Multi-persona conversations implemented
+**Next up**: Testing or UI polish
 
 ---
 
 ## TODO List
 
-### Multi-Actor Conversations
-See [multi_actor_conversations.md](./multi_actor_conversations.md) for full implementation plan.
+### Multi-Persona Conversations (Completed)
+- [x] Add Persona types and orchestration layer
+- [x] Create built-in persona definitions (Optimist, Critic)
+- [x] Implement MultiPersonaChatSession service with sequential and parallel modes
+- [x] Update Message component to display persona name
+- [x] Add ConfigPanel for switching between execution modes
+- [x] Test both sequential and parallel execution
 
-- [ ] Add Actor and ActorConfig types
-- [ ] Create built-in actor definitions (Optimist, Critic, Expert, Creative)
-- [ ] Implement MultiActorSession service (sequential round-robin orchestration)
-- [ ] Update Message component to display actor name/color
-- [ ] Create ActorSelector component (enable/disable/reorder actors)
-- [ ] Create ActorConfigModal for custom actor creation
-- [ ] Integrate with ChatView and page.tsx
-- [ ] Test and polish
+### Known Issues
+- [ ] **Auto-scroll hitch**: When scrolling up during streaming, there's a small hitch/stutter before auto-scroll disables. The current implementation tracks scroll direction and disables auto-scroll on upward scroll, but there's a brief fight between user scroll and auto-scroll. Potential fixes to try:
+  - Use `behavior: 'instant'` instead of `'smooth'` during streaming
+  - Add debounce/throttle to the scroll handler
+  - Use requestAnimationFrame for scroll updates
+  - Track "user is actively scrolling" state with a timeout
 
 ### Testing
 

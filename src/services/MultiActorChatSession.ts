@@ -3,7 +3,7 @@ import { APILLMClient } from './llm';
 import { StorageClient } from './storage/types';
 import { TitleService } from './TitleService';
 import { EventEmitter, ChatSessionEvents } from './types';
-import { Persona, Orchestrator } from './orchestration';
+import { Persona, Orchestrator, ConversationConfig, DEFAULT_CONFIG } from './orchestration';
 import { generateId } from '@/lib/utils';
 import { config } from '@/lib/config';
 import { getPersonaName } from '@/lib/personas';
@@ -14,6 +14,7 @@ export interface MultiPersonaChatSessionDeps {
   titleService: TitleService;
   personas: Persona[];
   orchestrator: Orchestrator;
+  config?: ConversationConfig;
 }
 
 /**
@@ -29,6 +30,7 @@ export class MultiPersonaChatSession {
   private titleService: TitleService;
   private personas: Persona[];
   private orchestrator: Orchestrator;
+  private conversationConfig: ConversationConfig;
   private isStreaming = false;
 
   constructor(deps: MultiPersonaChatSessionDeps) {
@@ -37,6 +39,7 @@ export class MultiPersonaChatSession {
     this.titleService = deps.titleService;
     this.personas = deps.personas;
     this.orchestrator = deps.orchestrator;
+    this.conversationConfig = deps.config ?? DEFAULT_CONFIG;
   }
 
   getConversation(): Conversation | null {
@@ -45,6 +48,14 @@ export class MultiPersonaChatSession {
 
   getIsStreaming(): boolean {
     return this.isStreaming;
+  }
+
+  getConfig(): ConversationConfig {
+    return { ...this.conversationConfig };
+  }
+
+  setConfig(newConfig: ConversationConfig): void {
+    this.conversationConfig = { ...newConfig };
   }
 
   async loadConversation(id: string): Promise<void> {
@@ -110,9 +121,11 @@ export class MultiPersonaChatSession {
         userMessage,
       });
 
-      // Process each persona in the plan sequentially
-      for (const persona of responsePlan) {
-        await this.streamPersonaResponse(persona);
+      // Execute based on configuration
+      if (this.conversationConfig.executionMode === 'parallel') {
+        await this.executeParallel(responsePlan);
+      } else {
+        await this.executeSequential(responsePlan);
       }
 
       // Generate title if this is the first message exchange
@@ -137,7 +150,59 @@ export class MultiPersonaChatSession {
   }
 
   /**
-   * Stream a response from a single persona.
+   * Execute personas sequentially, one at a time.
+   */
+  private async executeSequential(personas: Persona[]): Promise<void> {
+    for (const persona of personas) {
+      await this.streamPersonaResponse(persona);
+    }
+  }
+
+  /**
+   * Execute personas in parallel, all at once.
+   * Note: parallel mode always uses isolated context.
+   */
+  private async executeParallel(personas: Persona[]): Promise<void> {
+    if (!this.conversation) return;
+
+    // Capture the conversation state before any responses
+    // (for isolated context, each persona sees only this)
+    const historySnapshot = this.formatConversationForLLM(true);
+
+    // Create placeholder messages for all personas upfront
+    const personaMessages: Map<string, Message> = new Map();
+    for (const persona of personas) {
+      const msg: Message = {
+        id: generateId(),
+        role: 'assistant',
+        content: '',
+        createdAt: new Date(),
+        personaId: persona.id,
+      };
+      personaMessages.set(persona.id, msg);
+      this.conversation = {
+        ...this.conversation,
+        messages: [...this.conversation.messages, msg],
+        updatedAt: new Date(),
+      };
+    }
+    this.events.emit('conversationUpdated', this.conversation);
+
+    // Start all streams in parallel
+    const streamPromises = personas.map((persona) =>
+      this.streamPersonaResponseParallel(
+        persona,
+        personaMessages.get(persona.id)!,
+        historySnapshot
+      )
+    );
+
+    // Wait for all to complete
+    await Promise.all(streamPromises);
+  }
+
+  /**
+   * Stream a response from a single persona (sequential mode).
    */
   private async streamPersonaResponse(persona: Persona): Promise<void> {
     if (!this.conversation) return;
@@ -160,9 +225,9 @@ export class MultiPersonaChatSession {
     this.events.emit('conversationUpdated', this.conversation);
 
     // Format conversation history for LLM
-    // We send the history as a single user message with labels showing who said what
-    const formattedHistory = this.formatConversationForLLM();
-    const systemPrompt = this.buildSystemPrompt(persona);
+    const useIsolated = this.conversationConfig.contextMode === 'isolated';
+    const formattedHistory = this.formatConversationForLLM(useIsolated);
+    const systemPrompt = this.buildSystemPrompt(persona, useIsolated);
 
     const messagesForLLM: Message[] = [
       {
@@ -196,10 +261,54 @@ export class MultiPersonaChatSession {
   }
 
   /**
-   * Format conversation history with labels for each speaker.
-   * Excludes empty placeholder messages.
+   * Stream a response from a single persona (parallel mode).
+   * Uses pre-created message and pre-captured history.
    */
-  private formatConversationForLLM(): string {
+  private async streamPersonaResponseParallel(
+    persona: Persona,
+    personaMessage: Message,
+    historySnapshot: string
+  ): Promise<void> {
+    if (!this.conversation) return;
+
+    const systemPrompt = this.buildSystemPrompt(persona, true); // parallel always isolated
+
+    const messagesForLLM: Message[] = [
+      {
+        id: 'history',
+        role: 'user',
+        content: historySnapshot,
+        createdAt: new Date(),
+      },
+    ];
+
+    let personaContent = '';
+
+    for await (const chunk of this.llmClient.streamChat(
+      this.conversation.id,
+      messagesForLLM,
+      systemPrompt,
+      { model: this.conversation.model }
+    )) {
+      if (chunk.type === 'text' && chunk.content) {
+        personaContent += chunk.content;
+        this.updateMessage(personaMessage.id, personaContent);
+        this.events.emit('streamChunk', {
+          messageId: personaMessage.id,
+          content: chunk.content,
+          fullContent: personaContent,
+        });
+      } else if (chunk.type === 'error') {
+        throw new Error(chunk.error || 'Stream error');
+      }
+    }
+  }
+
+  /**
+   * Format conversation history with labels for each speaker.
+   * @param isolatedContext If true, only include user messages (not other personas)
+   */
+  private formatConversationForLLM(isolatedContext: boolean = false): string {
     if (!this.conversation) return '';
 
     const lines: string[] = [];
@@ -209,7 +318,8 @@ export class MultiPersonaChatSession {
 
       if (msg.role === 'user') {
         lines.push(`[User]: ${msg.content}`);
-      } else if (msg.personaId) {
+      } else if (msg.personaId && !isolatedContext) {
+        // Only include other personas' messages if not isolated
         const name = getPersonaName(msg.personaId);
         lines.push(`[${name}]: ${msg.content}`);
       }
@@ -220,7 +330,15 @@ export class MultiPersonaChatSession {
   /**
    * Build system prompt that includes persona instructions and format explanation.
    */
-  private buildSystemPrompt(persona: Persona): string {
+  private buildSystemPrompt(persona: Persona, isolated: boolean): string {
+    if (isolated) {
+      return `You are the "${persona.name}" persona.
+
+${persona.systemPrompt}
+
+Respond to the user's message directly. Do not include any label prefix in your response.`;
+    }
+
     return `You are participating in a multi-persona conversation. You are the "${persona.name}" persona.
 
 ${persona.systemPrompt}
