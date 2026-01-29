@@ -9,8 +9,11 @@ Historical record of completed tasks.
 - Create `JsonAgentSessionStorageProvider` for persisting agent chat sessions
 - Implement `/api/persona-agent/chat` endpoint with full agentic loop (continues until end_turn)
 - Implement `/api/persona-agent/clear` and `/api/persona-agent/history` endpoints
-- Create 8 tools: `get_persona`, `update_persona_name`, `update_system_prompt`, `list_test_inputs`, `get_test_input`, `create_test_input`, `update_test_input`, `delete_test_input`
+- Create 9 tools: `get_persona`, `update_persona_name`, `update_system_prompt`, `list_test_inputs`, `get_test_input`, `create_test_input`, `update_test_input`, `unlink_test_input`, `delete_test_input`
 - Add `agentChatSessionId` field to Persona type
+- `unlink_test_input` removes test input from persona only (preferred)
+- `delete_test_input` permanently deletes (use sparingly, e.g., unwanted newly-created inputs)
+- Agent system prompt includes guidance on when to use unlink vs delete
 
 ### Testing
 - Create comprehensive test suite with 14 live-llm tests
@@ -23,8 +26,15 @@ Historical record of completed tasks.
 - Integrate into `PersonaEditorView`
 - Implement ephemeral panel with auto-dismiss (5 second timer when not loading)
 - Panel state machine: HIDDEN → VISIBLE → PINNED
-- Click panel to pin, click outside to close pinned panel
+- Click panel to pin, click outside to close pinned panel, click "Pinned" badge to unpin
 - Visual indicators for pinned/loading states
+
+### UI Refresh & Polish
+- Add `refreshPersona` function to `usePersonaEditor` hook
+- Auto-refresh persona data when agent finishes making changes (system prompt, test inputs, name)
+- Create reusable `MarkdownContent` component (`src/components/ui/MarkdownContent.tsx`)
+- Add markdown rendering to test response output in `TestInputItem`
+- Add markdown rendering to agent chat output in `AgentOutputPanel`
 
 ## 2026-01-29 - Persona Editor Studio
 
