@@ -2,6 +2,15 @@
 
 Historical record of completed tasks.
 
+## 2026-01-29 - Web Search for Persona Agent
+
+### Server-Side Tools
+- Add Anthropic's `web_search` server-side tool to persona editor agent
+- Add new turn types: `ServerToolUseTurn`, `WebSearchResultTurn`
+- Handle streaming events for `server_tool_use` and `web_search_tool_result` content blocks
+- Update `turnsToClaudeMessages` to serialize/deserialize server tool state for multi-turn conversations
+- Display web search results in AgentOutputPanel with clickable links
+
 ## 2026-01-29 - Persona Editor Chat Agent
 
 ### Backend (Milestones 1-3)
@@ -11,7 +20,8 @@ Historical record of completed tasks.
 - Implement `/api/persona-agent/clear` and `/api/persona-agent/history` endpoints
 - Add `agentChatSessionId` field to Persona type
 
-### Agent Tools (12 total)
+### Agent Tools (13 total)
+- `web_search` - Anthropic server-side web search (real-time web access)
 - `get_persona` - get current persona details
 - `update_persona_name` - update persona name
 - `update_system_prompt` - update system prompt

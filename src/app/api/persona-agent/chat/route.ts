@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config } from '@/lib/config';
 import { log } from '@/lib/logger';
 import { JsonPersonaStorageProvider, JsonAgentSessionStorageProvider } from '@/lib/storage';
-import { AgentChatSession, AgentTurn, UserTurn, AssistantTextTurn, ToolCallTurn, ToolResultTurn } from '@/types';
+import { AgentChatSession, AgentTurn, UserTurn, AssistantTextTurn, ToolCallTurn, ToolResultTurn, ServerToolUseTurn, WebSearchResultTurn, WebSearchResult } from '@/types';
 import { agentTools, executeAgentTool } from './tools';
 
 const anthropic = new Anthropic({
@@ -33,6 +33,7 @@ You are helping the user edit a specific persona. You can:
 - View and modify the persona's name
 - View and modify the persona's system prompt
 - Manage test inputs (prompts used to test how the persona responds)
+- Search the web for information to help build better personas
 
 ## Current Persona
 ID: ${personaId}
@@ -44,7 +45,8 @@ Name: ${personaName}
 - Ask for clarification if the request is ambiguous
 - After making changes, briefly confirm what you did
 - Use tools to read and modify the persona data
-- Test inputs are shared globally across personas. When removing a test input, prefer unlink_test_input (removes from this persona only, preserves globally). Only use delete_test_input (permanent deletion) when the user explicitly wants it gone entirely, e.g. if they're unhappy with one you just created.`;
+- Test inputs are shared globally across personas. When removing a test input, prefer unlink_test_input (removes from this persona only, preserves globally). Only use delete_test_input (permanent deletion) when the user explicitly wants it gone entirely, e.g. if they're unhappy with one you just created.
+- You have access to web search - use it when you need current information or want to research best practices for creating effective personas.`;
 }
 
 /**
@@ -53,7 +55,8 @@ Name: ${personaName}
 function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessageParam[] {
   const messages: Anthropic.Messages.MessageParam[] = [];
   let currentAssistantContent: Anthropic.Messages.ContentBlockParam[] = [];
-  let currentToolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let currentUserContent: any[] = [];  // Can include tool_result and web_search_tool_result
 
   for (const turn of turns) {
     switch (turn.type) {
@@ -63,33 +66,47 @@ function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessagePa
           messages.push({ role: 'assistant', content: currentAssistantContent });
           currentAssistantContent = [];
         }
-        // Flush any pending tool results
-        if (currentToolResults.length > 0) {
-          messages.push({ role: 'user', content: currentToolResults });
-          currentToolResults = [];
+        // Flush any pending user content (tool results)
+        if (currentUserContent.length > 0) {
+          messages.push({ role: 'user', content: currentUserContent });
+          currentUserContent = [];
         }
         messages.push({ role: 'user', content: turn.content });
         break;
 
       case 'assistant_text':
-        // Flush any pending tool results before adding assistant content
-        if (currentToolResults.length > 0) {
-          messages.push({ role: 'user', content: currentToolResults });
-          currentToolResults = [];
+        // Flush any pending user content before adding assistant content
+        if (currentUserContent.length > 0) {
+          messages.push({ role: 'user', content: currentUserContent });
+          currentUserContent = [];
         }
         currentAssistantContent.push({ type: 'text', text: turn.content });
         break;
 
       case 'tool_call':
-        // Flush any pending tool results before adding to assistant content
-        if (currentToolResults.length > 0) {
-          messages.push({ role: 'user', content: currentToolResults });
-          currentToolResults = [];
+        // Flush any pending user content before adding to assistant content
+        if (currentUserContent.length > 0) {
+          messages.push({ role: 'user', content: currentUserContent });
+          currentUserContent = [];
         }
         currentAssistantContent.push({
           type: 'tool_use',
           id: turn.toolUseId,
           name: turn.toolName,
+          input: turn.input,
+        });
+        break;
+
+      case 'server_tool_use':
+        // Server tool use (like web_search) goes in assistant content
+        if (currentUserContent.length > 0) {
+          messages.push({ role: 'user', content: currentUserContent });
+          currentUserContent = [];
+        }
+        currentAssistantContent.push({
+          type: 'server_tool_use',
+          id: turn.toolUseId,
+          name: turn.toolName as 'web_search',  // Currently only web_search is supported
           input: turn.input,
         });
         break;
@@ -100,12 +117,43 @@ function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessagePa
           messages.push({ role: 'assistant', content: currentAssistantContent });
           currentAssistantContent = [];
         }
-        currentToolResults.push({
+        currentUserContent.push({
           type: 'tool_result',
           tool_use_id: turn.toolUseId,
           content: turn.output,
           is_error: turn.isError,
         });
+        break;
+
+      case 'web_search_result':
+        // Flush assistant content before web search results
+        if (currentAssistantContent.length > 0) {
+          messages.push({ role: 'assistant', content: currentAssistantContent });
+          currentAssistantContent = [];
+        }
+        // Web search results go in user content
+        if (turn.error) {
+          currentUserContent.push({
+            type: 'web_search_tool_result',
+            tool_use_id: turn.toolUseId,
+            content: {
+              type: 'web_search_tool_result_error',
+              error_code: turn.error.errorCode,
+            },
+          });
+        } else {
+          currentUserContent.push({
+            type: 'web_search_tool_result',
+            tool_use_id: turn.toolUseId,
+            content: turn.results.map((r) => ({
+              type: 'web_search_result',
+              url: r.url,
+              title: r.title,
+              encrypted_content: r.encryptedContent,
+              page_age: r.pageAge,
+            })),
+          });
+        }
         break;
     }
   }
@@ -114,8 +162,8 @@ function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessagePa
   if (currentAssistantContent.length > 0) {
     messages.push({ role: 'assistant', content: currentAssistantContent });
   }
-  if (currentToolResults.length > 0) {
-    messages.push({ role: 'user', content: currentToolResults });
+  if (currentUserContent.length > 0) {
+    messages.push({ role: 'user', content: currentUserContent });
   }
 
   return messages;
@@ -198,6 +246,7 @@ export async function POST(request: NextRequest) {
           let currentToolInput = '';
           let currentToolName = '';
           let currentToolUseId = '';
+          let isServerTool = false;  // Track if current tool is server-side
 
           for await (const event of response) {
             if (event.type === 'content_block_start') {
@@ -208,6 +257,67 @@ export async function POST(request: NextRequest) {
                 currentToolUseId = event.content_block.id;
                 currentToolName = event.content_block.name;
                 currentToolInput = '';
+                isServerTool = false;
+              } else if (event.content_block.type === 'server_tool_use') {
+                // Server-side tool (like web_search) - executed by Anthropic
+                currentToolUseId = event.content_block.id;
+                currentToolName = event.content_block.name;
+                currentToolInput = '';
+                isServerTool = true;
+              } else if (event.content_block.type === 'web_search_tool_result') {
+                // Web search results from Anthropic's servers
+                const webSearchBlock = event.content_block as Anthropic.Messages.WebSearchToolResultBlock;
+                const turnId = generateId();
+                const content = webSearchBlock.content;
+
+                // Check if it's an error or results
+                if (!Array.isArray(content) && 'error_code' in content) {
+                  const errorContent = content as { type: string; error_code: string };
+                  const webSearchTurn: WebSearchResultTurn = {
+                    type: 'web_search_result',
+                    id: turnId,
+                    toolUseId: webSearchBlock.tool_use_id,
+                    results: [],
+                    error: {
+                      type: 'web_search_tool_result_error',
+                      errorCode: errorContent.error_code,
+                    },
+                    createdAt: new Date(),
+                  };
+                  session.turns.push(webSearchTurn);
+                  sendEvent({
+                    type: 'web_search_result',
+                    id: turnId,
+                    toolUseId: webSearchBlock.tool_use_id,
+                    results: [],
+                    error: webSearchTurn.error,
+                  });
+                } else if (Array.isArray(content)) {
+                  // It's an array of results
+                  const resultsArray = content as Anthropic.Messages.WebSearchResultBlock[];
+                  const results: WebSearchResult[] = resultsArray.map((r) => ({
+                    type: 'web_search_result' as const,
+                    url: r.url,
+                    title: r.title,
+                    encryptedContent: r.encrypted_content,
+                    pageAge: r.page_age ?? undefined,
+                  }));
+
+                  const webSearchTurn: WebSearchResultTurn = {
+                    type: 'web_search_result',
+                    id: turnId,
+                    toolUseId: webSearchBlock.tool_use_id,
+                    results,
+                    createdAt: new Date(),
+                  };
+                  session.turns.push(webSearchTurn);
+                  sendEvent({
+                    type: 'web_search_result',
+                    id: turnId,
+                    toolUseId: webSearchBlock.tool_use_id,
+                    results,
+                  });
+                }
               }
             } else if (event.type === 'content_block_delta') {
               if (event.delta.type === 'text_delta') {
@@ -229,8 +339,8 @@ export async function POST(request: NextRequest) {
                 sendEvent({ type: 'text_complete', id: currentTextId, content: currentTextContent });
                 currentTextContent = '';
               }
-              // Finalize tool call
-              if (currentToolName) {
+              // Finalize tool call (custom tools only - server tools are handled differently)
+              if (currentToolName && !isServerTool) {
                 let input: Record<string, unknown> = {};
                 try {
                   input = currentToolInput ? JSON.parse(currentToolInput) : {};
@@ -254,14 +364,42 @@ export async function POST(request: NextRequest) {
                 currentToolName = '';
                 currentToolUseId = '';
                 currentToolInput = '';
+              } else if (currentToolName && isServerTool) {
+                // Server tool use - record it but don't execute (Anthropic executes it)
+                let input: Record<string, unknown> = {};
+                try {
+                  input = currentToolInput ? JSON.parse(currentToolInput) : {};
+                } catch {
+                  input = {};
+                }
+                const serverToolId = generateId();
+
+                const serverToolTurn: ServerToolUseTurn = {
+                  type: 'server_tool_use',
+                  id: serverToolId,
+                  toolUseId: currentToolUseId,
+                  toolName: currentToolName,
+                  input,
+                  createdAt: new Date(),
+                };
+                session.turns.push(serverToolTurn);
+                sendEvent({ type: 'server_tool_use', id: serverToolId, toolUseId: currentToolUseId, toolName: currentToolName, input });
+
+                currentToolName = '';
+                currentToolUseId = '';
+                currentToolInput = '';
+                isServerTool = false;
               }
             } else if (event.type === 'message_stop') {
               // Check stop reason from the accumulated message
             } else if (event.type === 'message_delta') {
               if (event.delta.stop_reason === 'end_turn') {
                 continueLoop = false;
+              } else if (event.delta.stop_reason === 'pause_turn') {
+                // Server is pausing a long-running turn - continue the loop to resume
+                // No custom tools to execute, just continue
               } else if (event.delta.stop_reason === 'tool_use') {
-                // Execute tools and continue loop
+                // Execute custom tools and continue loop (server tools already executed by Anthropic)
                 for (const toolCall of toolCalls) {
                   const result = await executeAgentTool(toolCall.name, toolCall.input, personaId);
                   const toolResultTurn: ToolResultTurn = {

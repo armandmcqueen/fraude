@@ -250,6 +250,37 @@ interface AgentChatSession {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Server-side tool use (like web_search)
+interface ServerToolUseTurn {
+  type: 'server_tool_use';
+  id: string;
+  toolUseId: string;
+  toolName: string;  // e.g., "web_search"
+  input: Record<string, unknown>;
+  createdAt: Date;
+}
+
+// Web search result
+interface WebSearchResult {
+  type: 'web_search_result';
+  url: string;
+  title: string;
+  encryptedContent?: string;
+  pageAge?: string;
+}
+
+interface WebSearchResultTurn {
+  type: 'web_search_result';
+  id: string;
+  toolUseId: string;
+  results: WebSearchResult[];
+  error?: {
+    type: 'web_search_tool_result_error';
+    errorCode: string;
+  };
+  createdAt: Date;
+}
 ```
 
 ## LLM Call Recording
@@ -469,7 +500,12 @@ Response: `AgentTurn[]`
 
 ## Agent Tools
 
-The persona editor agent has access to 12 tools:
+The persona editor agent has access to 13 tools:
+
+### Server Tools (Anthropic-hosted)
+| Tool | Description |
+|------|-------------|
+| `web_search` | Search the web for current information (executed by Anthropic's servers) |
 
 ### Read Tools
 | Tool | Description |

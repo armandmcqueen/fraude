@@ -5,6 +5,8 @@ import {
   AssistantTextTurn,
   ToolCallTurn,
   ToolResultTurn,
+  ServerToolUseTurn,
+  WebSearchResultTurn,
 } from '@/types';
 
 interface UseAgentChatOptions {
@@ -163,6 +165,30 @@ export function useAgentChat({ personaId }: UseAgentChatOptions): UseAgentChatRe
                     createdAt: new Date(),
                   };
                   setTurns((prev) => [...prev, toolResultTurn]);
+                  break;
+
+                case 'server_tool_use':
+                  const serverToolTurn: ServerToolUseTurn = {
+                    type: 'server_tool_use',
+                    id: event.id,
+                    toolUseId: event.toolUseId,
+                    toolName: event.toolName,
+                    input: event.input,
+                    createdAt: new Date(),
+                  };
+                  setTurns((prev) => [...prev, serverToolTurn]);
+                  break;
+
+                case 'web_search_result':
+                  const webSearchTurn: WebSearchResultTurn = {
+                    type: 'web_search_result',
+                    id: event.id,
+                    toolUseId: event.toolUseId,
+                    results: event.results,
+                    error: event.error,
+                    createdAt: new Date(),
+                  };
+                  setTurns((prev) => [...prev, webSearchTurn]);
                   break;
 
                 case 'error':

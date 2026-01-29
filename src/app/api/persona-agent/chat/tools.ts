@@ -10,9 +10,19 @@ function generateId(): string {
 }
 
 /**
- * Tool definitions for the persona editor agent.
+ * Web search server tool definition.
+ * This is executed by Anthropic's servers, not by our code.
  */
-export const agentTools: Anthropic.Messages.Tool[] = [
+export const webSearchTool: Anthropic.Messages.WebSearchTool20250305 = {
+  type: 'web_search_20250305',
+  name: 'web_search',
+  max_uses: 5,  // Limit searches per request
+};
+
+/**
+ * Custom tool definitions for the persona editor agent.
+ */
+export const customTools: Anthropic.Messages.Tool[] = [
   {
     name: 'get_persona',
     description: 'Get the current persona data including name, system prompt, and test input IDs.',
@@ -165,6 +175,14 @@ export const agentTools: Anthropic.Messages.Tool[] = [
       required: [],
     },
   },
+];
+
+/**
+ * All tools available to the agent (custom + server-side).
+ */
+export const agentTools: (Anthropic.Messages.Tool | Anthropic.Messages.WebSearchTool20250305)[] = [
+  webSearchTool,
+  ...customTools,
 ];
 
 interface ToolResult {

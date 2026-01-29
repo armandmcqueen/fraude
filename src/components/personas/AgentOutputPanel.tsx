@@ -241,6 +241,70 @@ function TurnDisplay({ turn }: { turn: AgentTurn }) {
         </div>
       );
 
+    case 'server_tool_use':
+      return (
+        <div className="flex justify-start">
+          <div className="max-w-[80%] px-3 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+            <div className="flex items-center gap-2 text-xs text-purple-700 dark:text-purple-400">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="font-medium">{turn.toolName}</span>
+              {typeof turn.input.query === 'string' && (
+                <span className="text-purple-600 dark:text-purple-300">"{turn.input.query}"</span>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'web_search_result':
+      return (
+        <div className="flex justify-start">
+          <div className="max-w-[90%] px-3 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+            {turn.error ? (
+              <div className="text-xs text-red-600 dark:text-red-400">
+                Search error: {turn.error.errorCode}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-xs text-purple-700 dark:text-purple-400 font-medium">
+                  {turn.results.length} result{turn.results.length !== 1 ? 's' : ''} found
+                </div>
+                <div className="space-y-1.5">
+                  {turn.results.slice(0, 5).map((result, idx) => (
+                    <a
+                      key={idx}
+                      href={result.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-xs hover:bg-purple-100 dark:hover:bg-purple-800/30 rounded p-1.5 -mx-1.5 transition-colors"
+                    >
+                      <div className="text-blue-600 dark:text-blue-400 hover:underline truncate">
+                        {result.title}
+                      </div>
+                      <div className="text-gray-500 dark:text-gray-400 truncate">
+                        {result.url}
+                      </div>
+                      {result.pageAge && (
+                        <div className="text-gray-400 dark:text-gray-500 text-[10px]">
+                          {result.pageAge}
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                  {turn.results.length > 5 && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      +{turn.results.length - 5} more results
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
     default:
       return null;
   }

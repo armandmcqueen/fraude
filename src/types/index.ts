@@ -124,7 +124,9 @@ export type AgentTurn =
   | UserTurn
   | AssistantTextTurn
   | ToolCallTurn
-  | ToolResultTurn;
+  | ToolResultTurn
+  | ServerToolUseTurn
+  | WebSearchResultTurn;
 
 export interface UserTurn {
   type: 'user';
@@ -155,6 +157,37 @@ export interface ToolResultTurn {
   toolUseId: string;    // References the tool_call
   output: string;
   isError?: boolean;
+  createdAt: Date;
+}
+
+// Server-side tool use (like web_search - executed by Anthropic's servers)
+export interface ServerToolUseTurn {
+  type: 'server_tool_use';
+  id: string;
+  toolUseId: string;    // Anthropic's server tool use ID
+  toolName: string;     // e.g., "web_search"
+  input: Record<string, unknown>;  // e.g., { query: "..." }
+  createdAt: Date;
+}
+
+// Web search result (auto-populated by Anthropic after server tool use)
+export interface WebSearchResult {
+  type: 'web_search_result';
+  url: string;
+  title: string;
+  encryptedContent?: string;  // Encrypted content for multi-turn
+  pageAge?: string;
+}
+
+export interface WebSearchResultTurn {
+  type: 'web_search_result';
+  id: string;
+  toolUseId: string;    // References the server_tool_use
+  results: WebSearchResult[];
+  error?: {
+    type: 'web_search_tool_result_error';
+    errorCode: string;  // e.g., "max_uses_exceeded", "too_many_requests"
+  };
   createdAt: Date;
 }
 
@@ -189,6 +222,25 @@ export interface ToolResultEvent {
   isError?: boolean;
 }
 
+export interface ServerToolUseEvent {
+  type: 'server_tool_use';
+  id: string;
+  toolUseId: string;
+  toolName: string;
+  input: Record<string, unknown>;
+}
+
+export interface WebSearchResultEvent {
+  type: 'web_search_result';
+  id: string;
+  toolUseId: string;
+  results: WebSearchResult[];
+  error?: {
+    type: 'web_search_tool_result_error';
+    errorCode: string;
+  };
+}
+
 export interface DoneEvent {
   type: 'done';
 }
@@ -203,5 +255,7 @@ export type AgentStreamEvent =
   | TextCompleteEvent
   | ToolCallEvent
   | ToolResultEvent
+  | ServerToolUseEvent
+  | WebSearchResultEvent
   | DoneEvent
   | AgentErrorEvent;

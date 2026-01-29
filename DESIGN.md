@@ -229,7 +229,8 @@ The persona editor includes an AI assistant that can view and modify persona dat
 │  /api/persona-agent/clear   - Clear conversation                │
 │  /api/persona-agent/history - Get conversation history          │
 │                                                                 │
-│  Tools (12 total):                                              │
+│  Tools (13 total):                                              │
+│    Server: web_search (Anthropic-hosted, real-time web search)  │
 │    Read: get_persona, list_test_inputs, get_test_input,         │
 │          list_all_personas, inspect_persona                     │
 │    Write: update_persona_name, update_system_prompt,            │
@@ -258,6 +259,7 @@ Auto-dismiss behavior:
 2. **Unlink vs Delete**: `unlink_test_input` removes from persona only (preferred), `delete_test_input` permanently deletes
 3. **Cross-persona reference**: `list_all_personas` and `inspect_persona` allow referencing other personas (read-only)
 4. **UI control**: `keep_output_visible` lets agent prevent auto-dismiss for important messages
+5. **Server tools**: `web_search` is executed by Anthropic's servers, enabling real-time web access for research
 
 ## Future Considerations
 
