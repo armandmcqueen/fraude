@@ -449,6 +449,9 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
     try {
       const loadedPersona = await personaClient.getPersona(personaId);
       if (loadedPersona) {
+        // Check if system prompt changed
+        const systemPromptChanged = loadedPersona.systemPrompt !== lastSavedInstructions.current;
+
         setPersona(loadedPersona);
         setInstructions(loadedPersona.systemPrompt);
         setName(loadedPersona.name);
@@ -469,20 +472,76 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
         // Refresh all available test inputs list
         await fetchAllTestInputs();
 
-        // Clear stale responses for test inputs that were removed
+        // Update responses and determine what needs regeneration
         setTestResponses((prev) => {
           const next = new Map<string, string>();
           testInputIds.forEach((id) => {
             const existing = prev.get(id);
-            if (existing) next.set(id, existing);
+            if (existing && !systemPromptChanged) {
+              next.set(id, existing);
+            }
+            // If systemPromptChanged, we don't copy existing responses (they'll be regenerated)
           });
           return next;
         });
+
+        // Determine which test inputs need response generation
+        const idsToGenerate: string[] = [];
+        if (systemPromptChanged) {
+          // System prompt changed - regenerate all
+          idsToGenerate.push(...testInputIds);
+        } else {
+          // Find test inputs without responses (newly added)
+          setTestResponses((currentResponses) => {
+            testInputIds.forEach((id) => {
+              if (!currentResponses.has(id)) {
+                idsToGenerate.push(id);
+              }
+            });
+            return currentResponses;
+          });
+        }
+
+        // Generate responses for test inputs that need them
+        if (idsToGenerate.length > 0) {
+          const newSystemPrompt = loadedPersona.systemPrompt;
+
+          // Mark all as generating
+          setGeneratingIds((prev) => {
+            const next = new Set(prev);
+            idsToGenerate.forEach((id) => next.add(id));
+            return next;
+          });
+
+          // Generate each response
+          idsToGenerate.forEach((testInputId) => {
+            const testInput = inputMap.get(testInputId);
+            if (testInput) {
+              generateResponseForContent(testInputId, testInput.content, newSystemPrompt)
+                .then((response) => {
+                  setTestResponses((prev) => new Map(prev).set(testInputId, response));
+                })
+                .catch((err) => {
+                  if (!(err instanceof Error && err.name === 'AbortError')) {
+                    const errorMsg = `[Error: ${err instanceof Error ? err.message : 'Unknown error'}]`;
+                    setTestResponses((prev) => new Map(prev).set(testInputId, errorMsg));
+                  }
+                })
+                .finally(() => {
+                  setGeneratingIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(testInputId);
+                    return next;
+                  });
+                });
+            }
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to refresh persona:', err);
     }
-  }, [personaId, fetchAllTestInputs]);
+  }, [personaId, fetchAllTestInputs, generateResponseForContent]);
 
   return {
     persona,
