@@ -110,6 +110,7 @@ export function usePersonas() {
     init();
   }, [fetchPersonas, loadSettings]);
 
+  
   // Save settings when selection changes (skip initial mount)
   useEffect(() => {
     if (isInitialMount.current) {
@@ -125,7 +126,7 @@ export function usePersonas() {
 
   // Create a new persona
   const createPersona = useCallback(
-    async (name: string, systemPrompt: string) => {
+    async (name: string, systemPrompt: string, options?: { hidden?: boolean }) => {
       const now = new Date();
       const id = generateId();
       const persona: Persona = {
@@ -133,6 +134,7 @@ export function usePersonas() {
         name,
         systemPrompt,
         testInputIds: [],
+        hidden: options?.hidden,
         createdAt: now,
         updatedAt: now,
       };
@@ -142,8 +144,10 @@ export function usePersonas() {
       // Add to cache
       setFullPersonas((prev) => new Map(prev).set(id, persona));
 
-      // Refresh list
-      await fetchPersonas();
+      // Refresh list (hidden personas won't show up)
+      if (!options?.hidden) {
+        await fetchPersonas();
+      }
 
       return persona;
     },

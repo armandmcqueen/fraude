@@ -121,6 +121,8 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
       const updated: Persona = {
         ...persona,
         systemPrompt: instructions,
+        // Unhide on first save if hidden
+        hidden: false,
         updatedAt: new Date(),
       };
 
@@ -137,16 +139,15 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
 
   // Save persona and regenerate responses (non-blocking generation)
   const saveAndRegenerate = useCallback(async () => {
-    if (!persona) return;
-
-    // Save first (fast)
+    // Save first (fast) - this will create the persona if it doesn't exist
     await savePersona();
 
     // Cancel any in-flight generations and start new ones
     cancelGenerations();
 
     // Regenerate responses for all test inputs (non-blocking)
-    if (persona.testInputIds.length > 0) {
+    // Note: persona might have just been created, so we need to check current state
+    if (persona && persona.testInputIds.length > 0) {
       regenerateAllResponses(instructions);
     }
   }, [persona, instructions, savePersona, cancelGenerations]);
@@ -308,10 +309,11 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
       const testInput = await testInputClient.getTestInput(testInputId);
       if (!testInput) return;
 
-      // Update persona with new testInputId
+      // Update persona with new testInputId (and unhide if hidden)
       const updated: Persona = {
         ...persona,
         testInputIds: [...persona.testInputIds, testInputId],
+        hidden: false,
         updatedAt: new Date(),
       };
 
@@ -360,10 +362,11 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
 
       await testInputClient.createTestInput(testInput);
 
-      // Update persona with new testInputId
+      // Update persona with new testInputId (and unhide if hidden)
       const updated: Persona = {
         ...persona,
         testInputIds: [...persona.testInputIds, id],
+        hidden: false,
         updatedAt: now,
       };
 
@@ -421,9 +424,11 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
 
       setName(newName);
 
+      // Update persona (and unhide if hidden)
       const updated: Persona = {
         ...persona,
         name: newName,
+        hidden: false,
         updatedAt: new Date(),
       };
 
@@ -435,9 +440,9 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
 
   // Force save (bypass debounce)
   const forceSave = useCallback(async () => {
-    if (!persona || !isDirty) return;
+    if (!isDirty) return;
     await saveAndRegenerate();
-  }, [persona, isDirty, saveAndRegenerate]);
+  }, [isDirty, saveAndRegenerate]);
 
   return {
     persona,

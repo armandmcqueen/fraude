@@ -33,7 +33,18 @@ export default function Home() {
     moveDown,
     getPersonaName,
     loading: personasLoading,
+    refresh: refreshPersonas,
   } = usePersonas();
+
+  // Refresh personas when returning from persona editor
+  useEffect(() => {
+    // Check if we're returning from the persona editor
+    const needsRefresh = sessionStorage.getItem('refreshPersonas');
+    if (needsRefresh) {
+      sessionStorage.removeItem('refreshPersonas');
+      refreshPersonas();
+    }
+  }, [refreshPersonas]);
 
   const {
     resources,

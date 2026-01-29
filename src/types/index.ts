@@ -56,6 +56,7 @@ export interface Persona {
   name: string;
   systemPrompt: string;
   testInputIds: string[];  // References to test inputs for persona editor
+  hidden?: boolean;  // Hidden until first edit (for new personas)
   createdAt: Date;
   updatedAt: Date;
 }

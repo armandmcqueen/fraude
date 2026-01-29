@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PersonaSummary, Persona } from '@/types';
 
@@ -9,7 +10,7 @@ interface PersonaSelectorProps {
   selectedIds: string[];
   onToggle: (id: string) => void;
   onFetchPersona?: (id: string) => Promise<Persona | null>;
-  onCreate: (name: string, systemPrompt: string) => Promise<unknown>;
+  onCreate: (name: string, systemPrompt: string, options?: { hidden?: boolean }) => Promise<unknown>;
   onUpdate?: (id: string, name: string, systemPrompt: string) => Promise<unknown>;
   onDelete: (id: string) => void;
   onMoveUp: (id: string) => void;
@@ -34,7 +35,7 @@ export function PersonaSelector({
   loading,
   embedded,
 }: PersonaSelectorProps) {
-  const [isCreating, setIsCreating] = useState(false);
+  const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formPrompt, setFormPrompt] = useState('');
@@ -55,15 +56,18 @@ export function PersonaSelector({
     }
   }, [editingId, onFetchPersona]);
 
-  const handleCreate = async () => {
-    if (!formName.trim() || !formPrompt.trim()) return;
+  const [isCreating, setIsCreating] = useState(false);
 
-    setIsSubmitting(true);
+  const handleCreateInStudio = async () => {
+    if (isCreating) return;
+    setIsCreating(true);
     try {
-      await onCreate(formName.trim(), formPrompt.trim());
-      resetForm();
-    } finally {
-      setIsSubmitting(false);
+      const result = await onCreate('New Persona', '', { hidden: true });
+      const persona = result as Persona;
+      router.push(`/personas/${persona.id}`);
+    } catch (err) {
+      console.error('Failed to create persona:', err);
+      setIsCreating(false);
     }
   };
 
@@ -82,21 +86,12 @@ export function PersonaSelector({
   const resetForm = () => {
     setFormName('');
     setFormPrompt('');
-    setIsCreating(false);
     setEditingId(null);
   };
 
   const handleEdit = (id: string) => {
-    setIsCreating(false);
     setEditingId(id);
     // Form will be populated by useEffect
-  };
-
-  const handleStartCreate = () => {
-    setEditingId(null);
-    setFormName('');
-    setFormPrompt('');
-    setIsCreating(true);
   };
 
   // Default persona IDs that cannot be deleted
@@ -119,7 +114,7 @@ export function PersonaSelector({
     .filter((p): p is PersonaSummary => p !== undefined);
   const unselectedPersonas = personas.filter((p) => !selectedIds.includes(p.id));
 
-  const isFormOpen = isCreating || editingId !== null;
+  const isFormOpen = editingId !== null;
 
   return (
     <div className={embedded ? '' : 'px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}>
@@ -326,11 +321,11 @@ export function PersonaSelector({
               />
               <div className="flex gap-2">
                 <button
-                  onClick={editingId ? handleUpdate : handleCreate}
+                  onClick={handleUpdate}
                   disabled={isSubmitting || !formName.trim() || !formPrompt.trim()}
                   className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Saving...' : editingId ? 'Update' : 'Create'}
+                  {isSubmitting ? 'Saving...' : 'Update'}
                 </button>
                 <button
                   onClick={resetForm}
@@ -348,13 +343,20 @@ export function PersonaSelector({
       {/* Add button */}
       {!isFormOpen && (
         <button
-          onClick={handleStartCreate}
-          disabled={disabled}
+          onClick={handleCreateInStudio}
+          disabled={disabled || isCreating}
           className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          {isCreating ? (
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          )}
           New Persona
         </button>
       )}

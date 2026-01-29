@@ -76,6 +76,9 @@ export class JsonPersonaStorageProvider implements PersonaStorageProvider {
           const content = await fs.readFile(filePath, 'utf-8');
           const persona: Persona = JSON.parse(content);
 
+          // Skip hidden personas
+          if (persona.hidden) continue;
+
           summaries.push({
             id: persona.id,
             name: persona.name,
