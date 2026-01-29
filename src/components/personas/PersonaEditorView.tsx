@@ -48,10 +48,11 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
     loadHistory: loadAgentHistory,
   } = useAgentChat({ personaId });
 
-  // Panel visibility and pinned are separate states
-  // Pinned persists across open/close
+  // Panel visibility, pinned, and expanded are separate states
+  // Pinned and expanded persist across open/close
   const [isPanelVisible, setIsPanelVisible] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
   const autoDismissTimerRef = useRef<NodeJS.Timeout | null>(null);
   const wasAgentLoadingRef = useRef(false);
 
@@ -140,6 +141,10 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
   const handleTogglePanel = useCallback(() => {
     // Toggle visibility, preserve pinned state
     setIsPanelVisible((v) => !v);
+  }, []);
+
+  const handleToggleExpand = useCallback(() => {
+    setIsPanelExpanded((v) => !v);
   }, []);
 
   // Track "just saved" state for showing temporary confirmation
@@ -263,10 +268,12 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
         turns={agentTurns}
         panelState={panelState}
         outputImportant={agentOutputImportant}
+        isExpanded={isPanelExpanded}
         onPin={handlePanelPin}
         onUnpin={handlePanelUnpin}
         onClose={handlePanelClose}
         onClear={clearAgentConversation}
+        onToggleExpand={handleToggleExpand}
         error={agentError}
         isLoading={isAgentLoading}
       />
