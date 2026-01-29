@@ -90,12 +90,14 @@ export class APILLMClient {
 
   /**
    * Get a non-streaming completion from the server.
+   * @param signal Optional AbortSignal to cancel the request
    */
   async complete(
     conversationId: string,
     systemPrompt: string,
     userPrompt: string,
-    options: LLMOptions
+    options: LLMOptions,
+    signal?: AbortSignal
   ): Promise<string> {
     const response = await fetch(this.completeEndpoint, {
       method: 'POST',
@@ -106,6 +108,7 @@ export class APILLMClient {
         userPrompt,
         options,
       }),
+      signal,
     });
 
     if (!response.ok) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { PersonaSummary, Persona } from '@/types';
 
 interface PersonaSelectorProps {
@@ -181,13 +182,24 @@ export function PersonaSelector({
                   onClick={() => handleEdit(persona.id)}
                   disabled={disabled}
                   className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 disabled:opacity-50"
-                  title="Edit persona"
+                  title="Quick edit"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </button>
               )}
+
+              {/* Edit in Studio link */}
+              <Link
+                href={`/personas/${persona.id}`}
+                className="text-gray-400 hover:text-purple-500 dark:hover:text-purple-400"
+                title="Edit in Studio"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </Link>
 
               {/* Deselect button */}
               {canDeselect && (
@@ -252,13 +264,23 @@ export function PersonaSelector({
                     onClick={() => handleEdit(persona.id)}
                     disabled={disabled}
                     className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 disabled:opacity-50"
-                    title="Edit persona"
+                    title="Quick edit"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
                 )}
+                {/* Edit in Studio link */}
+                <Link
+                  href={`/personas/${persona.id}`}
+                  className="text-gray-400 hover:text-purple-500 dark:hover:text-purple-400"
+                  title="Edit in Studio"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </Link>
                 {canDelete && (
                   <button
                     onClick={() => onDelete(persona.id)}

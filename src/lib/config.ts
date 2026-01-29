@@ -8,6 +8,7 @@ export const config = {
   dataDir: './data/conversations',
   personasDir: './data/personas',
   resourcesDir: './data/resources',
+  testInputsDir: './data/test-inputs',
   settingsFile: './data/settings.json',
 
   // UI

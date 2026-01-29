@@ -98,9 +98,10 @@ export class JsonPersonaStorageProvider implements PersonaStorageProvider {
       const content = await fs.readFile(filePath, 'utf-8');
       const persona = JSON.parse(content);
 
-      // Convert date strings back to Date objects
+      // Convert date strings back to Date objects and handle backwards compatibility
       return {
         ...persona,
+        testInputIds: persona.testInputIds || [],  // Default for existing personas
         createdAt: new Date(persona.createdAt),
         updatedAt: new Date(persona.updatedAt),
       };

@@ -36,6 +36,7 @@ export async function PUT(
     ...existing,
     name: body.name ?? existing.name,
     systemPrompt: body.systemPrompt ?? existing.systemPrompt,
+    testInputIds: body.testInputIds ?? existing.testInputIds,
     updatedAt: new Date(),
   };
 

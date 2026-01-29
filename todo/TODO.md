@@ -1,7 +1,7 @@
 # Fraude TODO
 
 ## Current Status
-**Phase**: Persona management implemented
+**Phase**: Persona Editor Studio implemented
 **Next up**: Testing or UI polish
 
 ---
@@ -31,6 +31,22 @@
 - [ ] Auto-generate persona description from system prompt (use LLM to create a short summary for display)
 - [x] Allow users to reorder personas (up/down buttons) to control response order
 - [x] Edit existing personas (name and system prompt)
+
+### Persona Editor Studio (Completed)
+- [x] Create dedicated persona editor page at `/personas/[id]`
+- [x] Split panel layout: Instructions editor (left) + Test responses (right)
+- [x] Auto-save with debouncing (1s delay)
+- [x] Global test inputs storage (`data/test-inputs/`)
+- [x] TestInput types and storage provider
+- [x] API routes for test inputs (CRUD)
+- [x] Client-side APITestInputStorageClient
+- [x] useTestInputs hook for test input management
+- [x] useDebounce hook utility
+- [x] usePersonaEditor hook (manages editor state, auto-save, response generation)
+- [x] Add testInputIds field to Persona type (with backwards compatibility)
+- [x] Generate test responses using Haiku model via complete() API
+- [x] Individual and batch response regeneration
+- [x] "Edit in Studio" link in PersonaSelector to navigate to editor
 
 ### View Modes (Completed)
 - [x] Focused view mode - shows one persona response at a time with tabs to switch

@@ -1,4 +1,4 @@
-import { Conversation, ConversationSummary, Persona, PersonaSummary, Resource, ResourceSummary, UserSettings } from '@/types';
+import { Conversation, ConversationSummary, Persona, PersonaSummary, Resource, ResourceSummary, TestInput, TestInputSummary, UserSettings } from '@/types';
 
 /**
  * Interface for conversation persistence.
@@ -78,6 +78,36 @@ export interface ResourceStorageClient {
    * Delete a resource by ID.
    */
   deleteResource(id: string): Promise<void>;
+}
+
+/**
+ * Interface for test input persistence.
+ */
+export interface TestInputStorageClient {
+  /**
+   * Get list of all test inputs.
+   */
+  listTestInputs(): Promise<TestInputSummary[]>;
+
+  /**
+   * Get a single test input by ID.
+   */
+  getTestInput(id: string): Promise<TestInput | null>;
+
+  /**
+   * Create a new test input.
+   */
+  createTestInput(testInput: TestInput): Promise<void>;
+
+  /**
+   * Update an existing test input.
+   */
+  updateTestInput(testInput: TestInput): Promise<void>;
+
+  /**
+   * Delete a test input by ID.
+   */
+  deleteTestInput(id: string): Promise<void>;
 }
 
 /**

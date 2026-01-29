@@ -18,11 +18,13 @@ fraude/
 │   │       └── storage/
 │   │           ├── conversations/  # CRUD for conversations
 │   │           ├── personas/       # CRUD for personas
-│   │           └── resources/      # CRUD for resources
+│   │           ├── resources/      # CRUD for resources
+│   │           └── test-inputs/    # CRUD for test inputs (persona editor)
 │   │
 │   ├── components/
 │   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector, ConfigPanel, PersonaSelector, ResourceManager
 │   │   ├── inspector/            # LLMInspector (dev panel for viewing LLM calls)
+│   │   ├── personas/             # PersonaEditorView, InstructionsEditor, TestResponsePanel, TestInputItem
 │   │   └── sidebar/              # Sidebar, ConversationItem
 │   │
 │   ├── services/                 # Client-side business logic (plain TS)
@@ -35,10 +37,11 @@ fraude/
 │   │   │   ├── APILLMClient.ts   # HTTP client for /api/chat, /api/complete
 │   │   │   └── index.ts
 │   │   ├── storage/
-│   │   │   ├── types.ts          # StorageClient, PersonaStorageClient, ResourceStorageClient interfaces
+│   │   │   ├── types.ts          # StorageClient, PersonaStorageClient, ResourceStorageClient, TestInputStorageClient interfaces
 │   │   │   ├── APIStorageClient.ts
 │   │   │   ├── APIPersonaStorageClient.ts  # HTTP client for persona CRUD
 │   │   │   ├── APIResourceStorageClient.ts # HTTP client for resource CRUD
+│   │   │   ├── APITestInputStorageClient.ts # HTTP client for test input CRUD
 │   │   │   ├── InMemoryStorageClient.ts  # For testing
 │   │   │   └── index.ts
 │   │   ├── prompt/
@@ -59,10 +62,11 @@ fraude/
 │   │   ├── test-inputs.ts        # Slash commands and @resource expansion
 │   │   ├── utils.ts              # generateId, etc.
 │   │   └── storage/              # Server-side JSON storage
-│   │       ├── types.ts          # StorageProvider, PersonaStorageProvider, ResourceStorageProvider interfaces
+│   │       ├── types.ts          # StorageProvider, PersonaStorageProvider, ResourceStorageProvider, TestInputStorageProvider interfaces
 │   │       ├── json-storage.ts   # JSON file storage for conversations
 │   │       ├── json-persona-storage.ts  # JSON file storage for personas
 │   │       ├── json-resource-storage.ts # JSON file storage for resources
+│   │       ├── json-test-input-storage.ts # JSON file storage for test inputs
 │   │       └── index.ts
 │   │
 │   ├── hooks/                    # Thin React wrappers
@@ -70,6 +74,9 @@ fraude/
 │   │   ├── useConversations.ts   # Fetches conversation list
 │   │   ├── usePersonas.ts        # Persona fetching, selection, create/delete
 │   │   ├── useResources.ts       # Resource fetching, create/update/delete
+│   │   ├── useTestInputs.ts      # Test input fetching, create/update/delete
+│   │   ├── useDebounce.ts        # Debounce utility hook
+│   │   ├── usePersonaEditor.ts   # Persona editor state, auto-save, response generation
 │   │   └── index.ts
 │   │
 │   └── types/                    # Shared TypeScript types
@@ -79,6 +86,7 @@ fraude/
 │   ├── conversations/            # JSON conversation storage
 │   ├── personas/                 # JSON persona storage
 │   ├── resources/                # JSON resource storage (for @mentions)
+│   ├── test-inputs/              # JSON test input storage (for persona editor)
 │   └── llm-calls/                # LLM call recordings (per conversation)
 │
 ├── tests/
@@ -139,6 +147,7 @@ interface Persona {
   id: string;
   name: string;
   systemPrompt: string;
+  testInputIds: string[];  // References to test inputs for persona editor
   createdAt: Date;
   updatedAt: Date;
 }
@@ -147,6 +156,20 @@ interface Persona {
 interface PersonaSummary {
   id: string;
   name: string;
+}
+
+// TestInput (for persona editor)
+interface TestInput {
+  id: string;
+  content: string;  // The test prompt
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// TestInputSummary (for list view)
+interface TestInputSummary {
+  id: string;
+  content: string;
 }
 
 // Resource (saved content for @mention substitution)
@@ -354,6 +377,21 @@ Response: `Resource`
 Request: `Resource`
 
 ### DELETE /api/storage/resources/[id]
+Response: `{ success: true }`
+
+### GET /api/storage/test-inputs
+Response: `TestInputSummary[]`
+
+### POST /api/storage/test-inputs
+Request: `TestInput`
+
+### GET /api/storage/test-inputs/[id]
+Response: `TestInput`
+
+### PUT /api/storage/test-inputs/[id]
+Request: `TestInput`
+
+### DELETE /api/storage/test-inputs/[id]
 Response: `{ success: true }`
 
 ## Testing

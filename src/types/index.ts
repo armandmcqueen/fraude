@@ -55,8 +55,23 @@ export interface Persona {
   id: string;
   name: string;
   systemPrompt: string;
+  testInputIds: string[];  // References to test inputs for persona editor
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Test input for persona editor
+export interface TestInput {
+  id: string;
+  content: string;  // The test prompt
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Summary for list view
+export interface TestInputSummary {
+  id: string;
+  content: string;  // Short enough to show in list
 }
 
 // Summary for list view (without full system prompt)

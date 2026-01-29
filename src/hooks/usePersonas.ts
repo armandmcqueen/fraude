@@ -132,6 +132,7 @@ export function usePersonas() {
         id,
         name,
         systemPrompt,
+        testInputIds: [],
         createdAt: now,
         updatedAt: now,
       };
