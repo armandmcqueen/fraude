@@ -11,10 +11,18 @@ fraude/
 │   │   ├── layout.tsx
 │   │   ├── page.tsx              # Main page, creates ChatSession
 │   │   ├── globals.css
+│   │   ├── personas/             # Persona Studio pages
+│   │   │   ├── page.tsx          # List all personas
+│   │   │   ├── new/page.tsx      # Create new persona
+│   │   │   └── [id]/page.tsx     # Persona editor
 │   │   └── api/
 │   │       ├── chat/route.ts     # Streaming chat (Anthropic SDK)
 │   │       ├── complete/route.ts # Non-streaming completion (Anthropic SDK)
 │   │       ├── llm-calls/        # LLM call recording inspector API
+│   │       ├── persona-agent/    # Persona editor agent API
+│   │       │   ├── chat/route.ts # Agentic loop with tool use (SSE)
+│   │       │   ├── clear/route.ts # Clear agent conversation
+│   │       │   └── history/route.ts # Get agent conversation history
 │   │       └── storage/
 │   │           ├── conversations/  # CRUD for conversations
 │   │           ├── personas/       # CRUD for personas
@@ -24,8 +32,10 @@ fraude/
 │   ├── components/
 │   │   ├── chat/                 # ChatView, MessageList, Message, InputArea, ModelSelector, ConfigPanel, PersonaSelector, ResourceManager
 │   │   ├── inspector/            # LLMInspector (dev panel for viewing LLM calls)
-│   │   ├── personas/             # PersonaEditorView, InstructionsEditor, TestResponsePanel, TestInputItem
-│   │   └── sidebar/              # Sidebar, ConversationItem
+│   │   ├── personas/             # PersonaEditorView, InstructionsEditor, TestResponsePanel, TestInputItem, AgentChatInput, AgentOutputPanel, PersonaSwitcher
+│   │   ├── sidebar/              # Sidebar, ConversationItem
+│   │   └── ui/                   # Reusable UI components
+│   │       └── MarkdownContent.tsx # Markdown rendering with syntax highlighting
 │   │
 │   ├── services/                 # Client-side business logic (plain TS)
 │   │   ├── ChatSession.ts        # Core chat orchestration (single persona)
@@ -77,6 +87,7 @@ fraude/
 │   │   ├── useTestInputs.ts      # Test input fetching, create/update/delete
 │   │   ├── useDebounce.ts        # Debounce utility hook
 │   │   ├── usePersonaEditor.ts   # Persona editor state, auto-save, response generation
+│   │   ├── useAgentChat.ts       # Agent chat state, streaming, tool tracking
 │   │   └── index.ts
 │   │
 │   └── types/                    # Shared TypeScript types
@@ -87,13 +98,15 @@ fraude/
 │   ├── personas/                 # JSON persona storage
 │   ├── resources/                # JSON resource storage (for @mentions)
 │   ├── test-inputs/              # JSON test input storage (for persona editor)
+│   ├── agent-sessions/           # JSON agent chat session storage (per persona)
 │   └── llm-calls/                # LLM call recordings (per conversation)
 │
 ├── tests/
 │   └── live-llm/                 # Live LLM tests (real API, no UI)
 │       ├── server-utils.ts       # Start/stop Next.js server
 │       ├── chat.test.ts          # Chat endpoint tests
-│       └── multi-actor.test.ts   # Multi-persona execution tests
+│       ├── multi-actor.test.ts   # Multi-persona execution tests
+│       └── persona-agent.test.ts # Persona editor agent tests
 │
 ├── vitest.config.ts              # Vitest configuration
 └── ...config files
@@ -200,6 +213,42 @@ interface LLMCallRecord {
   response: string | null;
   latencyMs: number;
   error: string | null;
+}
+
+// Agent Turn Types (for persona editor agent)
+type AgentTurn = UserTurn | AssistantTextTurn | ToolCallTurn | ToolResultTurn;
+
+interface UserTurn {
+  type: 'user';
+  content: string;
+}
+
+interface AssistantTextTurn {
+  type: 'assistant_text';
+  content: string;
+}
+
+interface ToolCallTurn {
+  type: 'tool_call';
+  toolName: string;
+  toolInput: Record<string, unknown>;
+  toolUseId: string;
+}
+
+interface ToolResultTurn {
+  type: 'tool_result';
+  toolUseId: string;
+  result: string;
+  isError?: boolean;
+}
+
+// Agent Chat Session (stored)
+interface AgentChatSession {
+  id: string;
+  personaId: string;
+  turns: AgentTurn[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
@@ -394,6 +443,58 @@ Request: `TestInput`
 ### DELETE /api/storage/test-inputs/[id]
 Response: `{ success: true }`
 
+### POST /api/persona-agent/chat
+Streams agent responses via SSE. Runs an agentic loop with tool use.
+Request:
+```json
+{
+  "personaId": "string",
+  "message": "string"
+}
+```
+Response: SSE stream of `AgentStreamEvent` objects
+
+### POST /api/persona-agent/clear
+Clears the agent conversation for a persona.
+Request:
+```json
+{
+  "personaId": "string"
+}
+```
+Response: `{ success: true }`
+
+### GET /api/persona-agent/history?personaId=xxx
+Response: `AgentTurn[]`
+
+## Agent Tools
+
+The persona editor agent has access to 12 tools:
+
+### Read Tools
+| Tool | Description |
+|------|-------------|
+| `get_persona` | Get current persona details (name, systemPrompt, testInputIds) |
+| `list_test_inputs` | List all test inputs linked to current persona |
+| `get_test_input` | Get specific test input by ID |
+| `list_all_personas` | List all personas in the system (read-only) |
+| `inspect_persona` | View another persona's details by ID (read-only) |
+
+### Write Tools
+| Tool | Description |
+|------|-------------|
+| `update_persona_name` | Update the persona's name |
+| `update_system_prompt` | Update the persona's system prompt |
+| `create_test_input` | Create a new test input and link it to the persona |
+| `update_test_input` | Update an existing test input's content |
+| `unlink_test_input` | Remove a test input from this persona (keeps globally) |
+| `delete_test_input` | Permanently delete a test input (use sparingly) |
+
+### UI Tools
+| Tool | Description |
+|------|-------------|
+| `keep_output_visible` | Prevent auto-dismiss for important messages |
+
 ## Testing
 
 ### Test Runner
@@ -424,6 +525,7 @@ Tests instantiate real services (ChatSession, APILLMClient, TitleService, etc.) 
 - `ChatSession` - full conversation flow with events, title generation, storage
 - Multi-turn conversations with context
 - `MultiPersonaChatSession` - sequential and parallel persona execution
+- Persona Editor Agent - tool use, agentic loop, streaming, session persistence
 
 **Timeouts**:
 - Test timeout: 60s (for LLM response time)

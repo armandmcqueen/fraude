@@ -9,11 +9,21 @@ Historical record of completed tasks.
 - Create `JsonAgentSessionStorageProvider` for persisting agent chat sessions
 - Implement `/api/persona-agent/chat` endpoint with full agentic loop (continues until end_turn)
 - Implement `/api/persona-agent/clear` and `/api/persona-agent/history` endpoints
-- Create 9 tools: `get_persona`, `update_persona_name`, `update_system_prompt`, `list_test_inputs`, `get_test_input`, `create_test_input`, `update_test_input`, `unlink_test_input`, `delete_test_input`
 - Add `agentChatSessionId` field to Persona type
-- `unlink_test_input` removes test input from persona only (preferred)
-- `delete_test_input` permanently deletes (use sparingly, e.g., unwanted newly-created inputs)
-- Agent system prompt includes guidance on when to use unlink vs delete
+
+### Agent Tools (12 total)
+- `get_persona` - get current persona details
+- `update_persona_name` - update persona name
+- `update_system_prompt` - update system prompt
+- `list_test_inputs` - list test inputs for current persona
+- `get_test_input` - get specific test input
+- `create_test_input` - create and link new test input
+- `update_test_input` - update test input content
+- `unlink_test_input` - remove test input from persona (keeps globally, preferred)
+- `delete_test_input` - permanently delete test input (use sparingly)
+- `list_all_personas` - list all personas in system (read-only)
+- `inspect_persona` - view another persona's details (read-only, for reference)
+- `keep_output_visible` - prevent auto-dismiss for important messages
 
 ### Testing
 - Create comprehensive test suite with 14 live-llm tests
@@ -24,17 +34,25 @@ Historical record of completed tasks.
 - Create `AgentChatInput` component (fixed bottom, full width input bar)
 - Create `AgentOutputPanel` component (shows conversation turns with tool visualization)
 - Integrate into `PersonaEditorView`
-- Implement ephemeral panel with auto-dismiss (5 second timer when not loading)
-- Panel state machine: HIDDEN → VISIBLE → PINNED
-- Click panel to pin, click outside to close pinned panel, click "Pinned" badge to unpin
+- Panel state: separate `isPanelVisible` and `isPinned` states (pinned persists across open/close)
+- Auto-dismiss (1 second) only triggers after agent finishes responding
+- Click panel to pin, click outside to close, click "Pinned" badge to unpin
+- Expanded mode toggle for full-screen chat experience
 - Visual indicators for pinned/loading states
 
 ### UI Refresh & Polish
 - Add `refreshPersona` function to `usePersonaEditor` hook
-- Auto-refresh persona data when agent finishes making changes (system prompt, test inputs, name)
+- Auto-refresh persona data when agent finishes making changes
+- Auto-regenerate test responses when system prompt changes or new test inputs added
 - Create reusable `MarkdownContent` component (`src/components/ui/MarkdownContent.tsx`)
-- Add markdown rendering to test response output in `TestInputItem`
-- Add markdown rendering to agent chat output in `AgentOutputPanel`
+- Add markdown rendering to test response output and agent chat output
+- Add `PersonaSwitcher` component to switch between personas in editor
+
+### Persona Studio Navigation
+- Create `/personas` page listing all personas with edit links
+- Create `/personas/new` page that creates persona and redirects to editor
+- Add "Persona Studio" link in sidebar footer
+- Add breadcrumb navigation in editor header (Chat / Personas / [Name])
 
 ## 2026-01-29 - Persona Editor Studio
 

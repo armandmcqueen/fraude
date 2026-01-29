@@ -198,6 +198,67 @@ Implementations:
 5. **UI Layout**: Sidebar (conversation list) + main chat view, desktop only
 6. **Testing model**: Live LLM tests start a real Next.js server and make HTTP requests (no UI). Vitest as test runner. Mock at Anthropic SDK level for fast/cheap integration tests if needed.
 
+## Persona Editor Agent
+
+The persona editor includes an AI assistant that can view and modify persona data through tool use.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     PERSONA EDITOR UI                           │
+├─────────────────────────────────────────────────────────────────┤
+│  PersonaEditorView                                              │
+│    ├── InstructionsEditor (left panel)                         │
+│    ├── TestResponsePanel (right panel)                         │
+│    ├── AgentOutputPanel (floating, ephemeral)                  │
+│    └── AgentChatInput (fixed bottom)                           │
+│                              │                                  │
+│  useAgentChat hook           │ usePersonaEditor hook            │
+│    - manages chat state      │   - manages persona state        │
+│    - streams agent responses │   - auto-save, regeneration      │
+│    - tracks outputImportant  │   - refreshPersona after agent   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ HTTP (SSE streaming)
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    SERVER SIDE                                  │
+├─────────────────────────────────────────────────────────────────┤
+│  /api/persona-agent/chat    - Agentic loop with tool use        │
+│  /api/persona-agent/clear   - Clear conversation                │
+│  /api/persona-agent/history - Get conversation history          │
+│                                                                 │
+│  Tools (12 total):                                              │
+│    Read: get_persona, list_test_inputs, get_test_input,         │
+│          list_all_personas, inspect_persona                     │
+│    Write: update_persona_name, update_system_prompt,            │
+│           create_test_input, update_test_input,                 │
+│           unlink_test_input, delete_test_input                  │
+│    UI: keep_output_visible                                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Agent Panel State
+
+The agent output panel has independent visibility and pinned states:
+
+- **Visibility**: `visible` or `hidden`
+- **Pinned**: `true` or `false` (persists across open/close)
+- **Expanded**: `true` or `false` (full-screen mode)
+
+Auto-dismiss behavior:
+- Only triggers 1 second after agent finishes responding
+- Disabled when pinned
+- Disabled when agent calls `keep_output_visible` tool
+
+### Tool Design Principles
+
+1. **Read vs Write separation**: Read tools for inspection, write tools for modification
+2. **Unlink vs Delete**: `unlink_test_input` removes from persona only (preferred), `delete_test_input` permanently deletes
+3. **Cross-persona reference**: `list_all_personas` and `inspect_persona` allow referencing other personas (read-only)
+4. **UI control**: `keep_output_visible` lets agent prevent auto-dismiss for important messages
+
 ## Future Considerations
 
 ### LLM Call Recording
