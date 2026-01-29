@@ -23,6 +23,29 @@ export const agentTools: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: 'list_all_personas',
+    description: 'List all personas in the system. Returns id and name for each persona. Use this to see what other personas exist that you might reference.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'inspect_persona',
+    description: 'View another persona\'s details (read-only). Use this to reference other personas when building or improving the current persona. You cannot edit other personas with this tool.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        personaId: {
+          type: 'string',
+          description: 'The ID of the persona to inspect',
+        },
+      },
+      required: ['personaId'],
+    },
+  },
+  {
     name: 'update_persona_name',
     description: 'Update the persona\'s display name.',
     input_schema: {
@@ -169,6 +192,43 @@ export async function executeAgentTool(
             name: persona.name,
             systemPrompt: persona.systemPrompt,
             testInputIds: persona.testInputIds,
+          }, null, 2),
+        };
+      }
+
+      case 'list_all_personas': {
+        const allPersonas = await personaStorage.listPersonas();
+        const currentPersona = await personaStorage.getPersona(personaId);
+        const result = allPersonas.map((p) => ({
+          id: p.id,
+          name: p.name,
+          isCurrentPersona: p.id === personaId,
+        }));
+        return {
+          output: JSON.stringify({
+            currentPersonaId: personaId,
+            currentPersonaName: currentPersona?.name || 'Unknown',
+            personas: result,
+          }, null, 2),
+        };
+      }
+
+      case 'inspect_persona': {
+        const targetId = input.personaId as string;
+        if (targetId === personaId) {
+          return { output: 'Use get_persona to view the current persona instead.', isError: true };
+        }
+        const targetPersona = await personaStorage.getPersona(targetId);
+        if (!targetPersona) {
+          return { output: `Persona with ID "${targetId}" not found`, isError: true };
+        }
+        return {
+          output: JSON.stringify({
+            id: targetPersona.id,
+            name: targetPersona.name,
+            systemPrompt: targetPersona.systemPrompt,
+            testInputIds: targetPersona.testInputIds,
+            note: 'This is a read-only view. You cannot edit this persona.',
           }, null, 2),
         };
       }
