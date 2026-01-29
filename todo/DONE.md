@@ -2,6 +2,55 @@
 
 Historical record of completed tasks.
 
+## 2026-01-29 - Persona Editor Chat Agent
+
+### Backend (Milestones 1-3)
+- Create agent turn types (`AgentTurn`, `UserTurn`, `AssistantTextTurn`, `ToolCallTurn`, `ToolResultTurn`)
+- Create `JsonAgentSessionStorageProvider` for persisting agent chat sessions
+- Implement `/api/persona-agent/chat` endpoint with full agentic loop (continues until end_turn)
+- Implement `/api/persona-agent/clear` and `/api/persona-agent/history` endpoints
+- Create 8 tools: `get_persona`, `update_persona_name`, `update_system_prompt`, `list_test_inputs`, `get_test_input`, `create_test_input`, `update_test_input`, `delete_test_input`
+- Add `agentChatSessionId` field to Persona type
+
+### Testing
+- Create comprehensive test suite with 14 live-llm tests
+- Tests cover: basic flow, tool use (read/write), agentic loop, streaming, session persistence
+
+### UI (Milestones 4 & 5)
+- Create `useAgentChat` hook for managing agent chat state and streaming
+- Create `AgentChatInput` component (fixed bottom, full width input bar)
+- Create `AgentOutputPanel` component (shows conversation turns with tool visualization)
+- Integrate into `PersonaEditorView`
+- Implement ephemeral panel with auto-dismiss (5 second timer when not loading)
+- Panel state machine: HIDDEN → VISIBLE → PINNED
+- Click panel to pin, click outside to close pinned panel
+- Visual indicators for pinned/loading states
+
+## 2026-01-29 - Persona Editor Studio
+
+### Persona Editor
+- Create persona editor studio for managing personas outside of conversations
+- Add ability to create personas from scratch in the editor
+- Full CRUD operations for personas in a dedicated interface
+
+## 2026-01-27 - Persona & Resource Management
+
+### Persona Features
+- Add persona creation UI within conversations
+- Add persona selection (choose which personas participate)
+- Add persona ordering (control response order)
+- Implement slash commands for persona management
+
+### Resources System
+- Add resources feature for providing context to personas
+- Make personas and resources editable inline
+- Save conversation configuration permanently
+
+### UI Improvements
+- Move settings to a modal dialog
+- Add tab view for viewing multiple persona outputs side-by-side
+- Add request cancellation support
+
 ## 2026-01-26 - Multi-Persona Conversations
 
 ### Orchestration Layer

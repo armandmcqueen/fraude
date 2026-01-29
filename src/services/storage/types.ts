@@ -1,4 +1,4 @@
-import { Conversation, ConversationSummary, Persona, PersonaSummary, Resource, ResourceSummary, TestInput, TestInputSummary, UserSettings } from '@/types';
+import { Conversation, ConversationSummary, Persona, PersonaSummary, Resource, ResourceSummary, TestInput, TestInputSummary, UserSettings, AgentChatSession } from '@/types';
 
 /**
  * Interface for conversation persistence.
@@ -123,4 +123,24 @@ export interface SettingsStorageClient {
    * Save user settings.
    */
   saveSettings(settings: UserSettings): Promise<void>;
+}
+
+/**
+ * Interface for agent chat session persistence.
+ */
+export interface AgentSessionStorageClient {
+  /**
+   * Get an agent chat session by ID.
+   */
+  getSession(id: string): Promise<AgentChatSession | null>;
+
+  /**
+   * Save an agent chat session (create or update).
+   */
+  saveSession(session: AgentChatSession): Promise<void>;
+
+  /**
+   * Delete an agent chat session by ID.
+   */
+  deleteSession(id: string): Promise<void>;
 }

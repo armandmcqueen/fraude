@@ -1,4 +1,4 @@
-import { Conversation, ConversationSummary, Persona, PersonaSummary, Resource, ResourceSummary, TestInput, TestInputSummary, UserSettings } from '@/types';
+import { Conversation, ConversationSummary, Persona, PersonaSummary, Resource, ResourceSummary, TestInput, TestInputSummary, UserSettings, AgentChatSession } from '@/types';
 
 export interface StorageProvider {
   listConversations(): Promise<ConversationSummary[]>;
@@ -35,4 +35,10 @@ export interface TestInputStorageProvider {
 export interface SettingsStorageProvider {
   getSettings(): Promise<UserSettings | null>;
   saveSettings(settings: UserSettings): Promise<void>;
+}
+
+export interface AgentSessionStorageProvider {
+  getSession(id: string): Promise<AgentChatSession | null>;
+  saveSession(session: AgentChatSession): Promise<void>;
+  deleteSession(id: string): Promise<void>;
 }

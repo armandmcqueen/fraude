@@ -444,6 +444,46 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
     await saveAndRegenerate();
   }, [isDirty, saveAndRegenerate]);
 
+  // Refresh persona data from server (used after agent makes changes)
+  const refreshPersona = useCallback(async () => {
+    try {
+      const loadedPersona = await personaClient.getPersona(personaId);
+      if (loadedPersona) {
+        setPersona(loadedPersona);
+        setInstructions(loadedPersona.systemPrompt);
+        setName(loadedPersona.name);
+        lastSavedInstructions.current = loadedPersona.systemPrompt;
+        setIsDirty(false);
+
+        // Reload test inputs for this persona
+        const testInputIds = loadedPersona.testInputIds || [];
+        const loadedInputs = await Promise.all(
+          testInputIds.map((id) => testInputClient.getTestInput(id))
+        );
+        const inputMap = new Map<string, TestInput>();
+        loadedInputs.forEach((input) => {
+          if (input) inputMap.set(input.id, input);
+        });
+        setTestInputs(inputMap);
+
+        // Refresh all available test inputs list
+        await fetchAllTestInputs();
+
+        // Clear stale responses for test inputs that were removed
+        setTestResponses((prev) => {
+          const next = new Map<string, string>();
+          testInputIds.forEach((id) => {
+            const existing = prev.get(id);
+            if (existing) next.set(id, existing);
+          });
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to refresh persona:', err);
+    }
+  }, [personaId, fetchAllTestInputs]);
+
   return {
     persona,
     instructions,
@@ -463,6 +503,7 @@ export function usePersonaEditor({ personaId, autoSaveDelay = 1000 }: UsePersona
     regenerateAllResponses,
     regenerateSingleResponse,
     forceSave,
+    refreshPersona,
     loading,
     error,
   };

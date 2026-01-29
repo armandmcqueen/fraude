@@ -5,3 +5,4 @@ export { useResources } from './useResources';
 export { useTestInputs } from './useTestInputs';
 export { useDebounce } from './useDebounce';
 export { usePersonaEditor } from './usePersonaEditor';
+export { useAgentChat } from './useAgentChat';

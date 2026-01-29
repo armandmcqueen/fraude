@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { TestInput } from '@/types';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
 
 interface TestInputItemProps {
   testInput: TestInput;
@@ -109,9 +110,7 @@ export function TestInputItem({
               Generating...
             </p>
           ) : response ? (
-            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-              {response}
-            </p>
+            <MarkdownContent content={response} className="text-sm text-gray-700 dark:text-gray-300" />
           ) : (
             <p className="text-sm text-gray-400 dark:text-gray-500 italic">
               No response yet. Click regenerate to generate a response.

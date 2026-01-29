@@ -10,6 +10,7 @@ export const config = {
   resourcesDir: './data/resources',
   testInputsDir: './data/test-inputs',
   settingsFile: './data/settings.json',
+  agentSessionsDir: './data/agent-sessions',
 
   // UI
   maxMessageLength: 100000,

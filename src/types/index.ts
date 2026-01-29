@@ -57,6 +57,7 @@ export interface Persona {
   systemPrompt: string;
   testInputIds: string[];  // References to test inputs for persona editor
   hidden?: boolean;  // Hidden until first edit (for new personas)
+  agentChatSessionId?: string;  // Current agent chat session (null if never used)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -104,3 +105,103 @@ export interface UserSettings {
   selectedPersonaIds: string[];
   viewMode?: ViewMode;
 }
+
+// =============================================================================
+// Agent Chat Session Types (for persona editor agent)
+// =============================================================================
+
+// Agent chat session - flat list of turns
+export interface AgentChatSession {
+  id: string;
+  personaId: string;
+  turns: AgentTurn[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Discriminated union for turn types
+export type AgentTurn =
+  | UserTurn
+  | AssistantTextTurn
+  | ToolCallTurn
+  | ToolResultTurn;
+
+export interface UserTurn {
+  type: 'user';
+  id: string;
+  content: string;
+  createdAt: Date;
+}
+
+export interface AssistantTextTurn {
+  type: 'assistant_text';
+  id: string;
+  content: string;
+  createdAt: Date;
+}
+
+export interface ToolCallTurn {
+  type: 'tool_call';
+  id: string;           // Unique turn ID
+  toolUseId: string;    // Anthropic's tool_use ID (needed for tool_result)
+  toolName: string;
+  input: Record<string, unknown>;
+  createdAt: Date;
+}
+
+export interface ToolResultTurn {
+  type: 'tool_result';
+  id: string;
+  toolUseId: string;    // References the tool_call
+  output: string;
+  isError?: boolean;
+  createdAt: Date;
+}
+
+// =============================================================================
+// Agent Stream Events (sent to client via SSE)
+// =============================================================================
+
+export interface TextDeltaEvent {
+  type: 'text_delta';
+  content: string;
+}
+
+export interface TextCompleteEvent {
+  type: 'text_complete';
+  id: string;
+  content: string;
+}
+
+export interface ToolCallEvent {
+  type: 'tool_call';
+  id: string;
+  toolUseId: string;
+  toolName: string;
+  input: Record<string, unknown>;
+}
+
+export interface ToolResultEvent {
+  type: 'tool_result';
+  id: string;
+  toolUseId: string;
+  output: string;
+  isError?: boolean;
+}
+
+export interface DoneEvent {
+  type: 'done';
+}
+
+export interface AgentErrorEvent {
+  type: 'error';
+  message: string;
+}
+
+export type AgentStreamEvent =
+  | TextDeltaEvent
+  | TextCompleteEvent
+  | ToolCallEvent
+  | ToolResultEvent
+  | DoneEvent
+  | AgentErrorEvent;
