@@ -7,6 +7,7 @@ import { InstructionsEditor } from './InstructionsEditor';
 import { TestResponsePanel } from './TestResponsePanel';
 import { AgentChatInput } from './AgentChatInput';
 import { AgentOutputPanel, PanelState } from './AgentOutputPanel';
+import { PersonaSwitcher } from './PersonaSwitcher';
 
 interface PersonaEditorViewProps {
   personaId: string;
@@ -199,12 +200,15 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
             Back to Chat
           </Link>
           <div className="h-5 w-px bg-gray-300 dark:bg-gray-600" />
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => updateName(e.target.value)}
-            className="text-lg font-semibold text-gray-900 dark:text-gray-100 bg-transparent border-none focus:outline-none focus:ring-0 px-0"
-          />
+          <div className="flex items-center gap-1">
+            <PersonaSwitcher currentPersonaId={personaId} currentPersonaName={name} />
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => updateName(e.target.value)}
+              className="text-lg font-semibold text-gray-900 dark:text-gray-100 bg-transparent border-none focus:outline-none focus:ring-0 px-0"
+            />
+          </div>
         </div>
 
         {/* Status indicator */}
