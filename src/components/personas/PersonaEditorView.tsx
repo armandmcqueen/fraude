@@ -202,9 +202,16 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Chat
+            Chat
           </Link>
-          <div className="h-5 w-px bg-gray-300 dark:bg-gray-600" />
+          <span className="text-gray-400 dark:text-gray-500">/</span>
+          <Link
+            href="/personas"
+            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+          >
+            Personas
+          </Link>
+          <span className="text-gray-400 dark:text-gray-500">/</span>
           <div className="flex items-center gap-1">
             <PersonaSwitcher currentPersonaId={personaId} currentPersonaName={name} />
             <input
