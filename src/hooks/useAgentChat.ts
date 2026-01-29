@@ -15,6 +15,7 @@ interface UseAgentChatReturn {
   turns: AgentTurn[];
   isLoading: boolean;
   error: string | null;
+  outputImportant: boolean;
   sendMessage: (message: string) => Promise<void>;
   clearConversation: () => Promise<void>;
   loadHistory: () => Promise<void>;
@@ -28,6 +29,7 @@ export function useAgentChat({ personaId }: UseAgentChatOptions): UseAgentChatRe
   const [turns, setTurns] = useState<AgentTurn[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [outputImportant, setOutputImportant] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const loadHistory = useCallback(async () => {
@@ -52,6 +54,7 @@ export function useAgentChat({ personaId }: UseAgentChatOptions): UseAgentChatRe
 
     setIsLoading(true);
     setError(null);
+    setOutputImportant(false); // Reset for new message
 
     // Add user turn immediately
     const userTurn: UserTurn = {
@@ -135,6 +138,10 @@ export function useAgentChat({ personaId }: UseAgentChatOptions): UseAgentChatRe
                   break;
 
                 case 'tool_call':
+                  // Check if this is the keep_output_visible tool
+                  if (event.toolName === 'keep_output_visible') {
+                    setOutputImportant(true);
+                  }
                   const toolCallTurn: ToolCallTurn = {
                     type: 'tool_call',
                     id: event.id,
@@ -203,6 +210,7 @@ export function useAgentChat({ personaId }: UseAgentChatOptions): UseAgentChatRe
     turns,
     isLoading,
     error,
+    outputImportant,
     sendMessage,
     clearConversation,
     loadHistory,

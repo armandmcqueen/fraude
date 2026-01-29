@@ -42,18 +42,23 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
     turns: agentTurns,
     isLoading: isAgentLoading,
     error: agentError,
+    outputImportant: agentOutputImportant,
     sendMessage: sendAgentMessage,
     clearConversation: clearAgentConversation,
     loadHistory: loadAgentHistory,
   } = useAgentChat({ personaId });
 
-  // Panel state machine: hidden | visible | pinned
-  const [panelState, setPanelState] = useState<PanelState>('hidden');
+  // Panel visibility and pinned are separate states
+  // Pinned persists across open/close
+  const [isPanelVisible, setIsPanelVisible] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
   const autoDismissTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const prevTurnsLengthRef = useRef(0);
   const wasAgentLoadingRef = useRef(false);
 
-  const AUTO_DISMISS_DELAY = 5000; // 5 seconds
+  // Compute panelState for AgentOutputPanel (combines visibility + pinned)
+  const panelState: PanelState = !isPanelVisible ? 'hidden' : isPinned ? 'pinned' : 'visible';
+
+  const AUTO_DISMISS_DELAY = 1000; // 1 second
 
   // Clear auto-dismiss timer
   const clearAutoDismissTimer = useCallback(() => {
@@ -63,11 +68,17 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
     }
   }, []);
 
-  // Start auto-dismiss timer (only when visible, not pinned)
+  // Start auto-dismiss timer (only when visible and not pinned)
   const startAutoDismissTimer = useCallback(() => {
     clearAutoDismissTimer();
     autoDismissTimerRef.current = setTimeout(() => {
-      setPanelState((current) => (current === 'visible' ? 'hidden' : current));
+      // Only hide if still visible and not pinned
+      setIsPanelVisible((visible) => {
+        // Check pinned state at timer fire time
+        // We can't access isPinned directly here, so we use a ref or just hide
+        // The timer should only have been started if not pinned
+        return false;
+      });
     }, AUTO_DISMISS_DELAY);
   }, [clearAutoDismissTimer]);
 
@@ -76,41 +87,33 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
     loadAgentHistory();
   }, [loadAgentHistory]);
 
-  // Refresh persona data when agent finishes (loading goes from true to false)
-  useEffect(() => {
-    if (wasAgentLoadingRef.current && !isAgentLoading) {
-      // Agent just finished - refresh persona data to pick up any changes
-      refreshPersona();
-    }
-    wasAgentLoadingRef.current = isAgentLoading;
-  }, [isAgentLoading, refreshPersona]);
-
-  // Show panel when agent starts loading (user sent message)
+  // Handle agent loading state changes
   useEffect(() => {
     if (isAgentLoading) {
-      setPanelState('visible');
-      clearAutoDismissTimer(); // Don't auto-dismiss while loading
-    }
-  }, [isAgentLoading, clearAutoDismissTimer]);
+      // Agent started - show panel, clear any timer
+      setIsPanelVisible(true);
+      clearAutoDismissTimer();
+    } else if (wasAgentLoadingRef.current) {
+      // Agent just finished (loading went from true to false)
+      // Refresh persona data to pick up any changes
+      refreshPersona();
 
-  // Reset timer when new content arrives, start timer when loading stops
-  useEffect(() => {
-    const turnsChanged = agentTurns.length !== prevTurnsLengthRef.current;
-    prevTurnsLengthRef.current = agentTurns.length;
-
-    if (panelState === 'visible') {
-      if (isAgentLoading) {
-        // Loading - don't start timer
-        clearAutoDismissTimer();
-      } else if (turnsChanged) {
-        // New content arrived and not loading - restart timer
-        startAutoDismissTimer();
-      } else if (!autoDismissTimerRef.current) {
-        // Loading just stopped - start timer
+      // Start auto-dismiss timer ONLY if:
+      // - Panel is not pinned
+      // - Output is not marked as important
+      if (!isPinned && !agentOutputImportant) {
         startAutoDismissTimer();
       }
     }
-  }, [agentTurns.length, isAgentLoading, panelState, clearAutoDismissTimer, startAutoDismissTimer]);
+    wasAgentLoadingRef.current = isAgentLoading;
+  }, [isAgentLoading, isPinned, agentOutputImportant, refreshPersona, clearAutoDismissTimer, startAutoDismissTimer]);
+
+  // Clear timer when pinned changes to true
+  useEffect(() => {
+    if (isPinned) {
+      clearAutoDismissTimer();
+    }
+  }, [isPinned, clearAutoDismissTimer]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -119,27 +122,24 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
 
   // Panel actions
   const handlePanelPin = useCallback(() => {
-    setPanelState('pinned');
+    setIsPinned(true);
     clearAutoDismissTimer();
   }, [clearAutoDismissTimer]);
 
   const handlePanelClose = useCallback(() => {
-    setPanelState('hidden');
+    setIsPanelVisible(false);
     clearAutoDismissTimer();
   }, [clearAutoDismissTimer]);
 
   const handlePanelUnpin = useCallback(() => {
-    setPanelState('visible');
-    startAutoDismissTimer();
-  }, [startAutoDismissTimer]);
+    // Unpin does NOT start auto-dismiss timer
+    // Auto-dismiss only happens after agent finishes responding
+    setIsPinned(false);
+  }, []);
 
   const handleTogglePanel = useCallback(() => {
-    setPanelState((current) => {
-      if (current === 'hidden') {
-        return 'pinned'; // Show output button opens as pinned
-      }
-      return 'hidden';
-    });
+    // Toggle visibility, preserve pinned state
+    setIsPanelVisible((v) => !v);
   }, []);
 
   // Track "just saved" state for showing temporary confirmation
@@ -262,6 +262,7 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
       <AgentOutputPanel
         turns={agentTurns}
         panelState={panelState}
+        outputImportant={agentOutputImportant}
         onPin={handlePanelPin}
         onUnpin={handlePanelUnpin}
         onClose={handlePanelClose}
@@ -275,7 +276,7 @@ export function PersonaEditorView({ personaId }: PersonaEditorViewProps) {
         onSend={sendAgentMessage}
         isLoading={isAgentLoading}
         onTogglePanel={handleTogglePanel}
-        isPanelVisible={panelState !== 'hidden'}
+        isPanelVisible={isPanelVisible}
         hasHistory={agentTurns.length > 0}
       />
     </div>

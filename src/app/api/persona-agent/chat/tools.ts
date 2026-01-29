@@ -133,6 +133,15 @@ export const agentTools: Anthropic.Messages.Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'keep_output_visible',
+    description: 'Call this tool when your response contains important information the user needs to read, such as a question you are asking, an explanation they requested, or anything where the text output matters. By default, the chat panel auto-hides after tool operations. Calling this keeps it visible until the user dismisses it. Do NOT call this for routine confirmations like "I updated the system prompt" - only for responses where the user needs to read and consider your message.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 interface ToolResult {
@@ -289,6 +298,11 @@ export async function executeAgentTool(
         await testInputStorage.deleteTestInput(id);
 
         return { output: `Successfully deleted test input "${id}" permanently` };
+      }
+
+      case 'keep_output_visible': {
+        // This is a client-side signal - no server action needed
+        return { output: 'Output will remain visible' };
       }
 
       default:

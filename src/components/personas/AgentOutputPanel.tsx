@@ -9,6 +9,7 @@ export type PanelState = 'hidden' | 'visible' | 'pinned';
 interface AgentOutputPanelProps {
   turns: AgentTurn[];
   panelState: PanelState;
+  outputImportant: boolean;
   onPin: () => void;
   onUnpin: () => void;
   onClose: () => void;
@@ -20,6 +21,7 @@ interface AgentOutputPanelProps {
 export function AgentOutputPanel({
   turns,
   panelState,
+  outputImportant,
   onPin,
   onUnpin,
   onClose,
@@ -37,9 +39,10 @@ export function AgentOutputPanel({
     }
   }, [turns, panelState]);
 
-  // Handle click outside to close pinned panel
+  // Handle click outside to close panel (when pinned or when agent marked important)
   useEffect(() => {
-    if (panelState !== 'pinned') return;
+    const shouldHandleClickOutside = panelState === 'pinned' || (panelState === 'visible' && outputImportant);
+    if (!shouldHandleClickOutside) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
@@ -52,7 +55,7 @@ export function AgentOutputPanel({
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [panelState, onClose]);
+  }, [panelState, outputImportant, onClose]);
 
   if (panelState === 'hidden') return null;
 
