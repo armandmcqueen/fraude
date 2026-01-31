@@ -229,10 +229,11 @@ The persona editor includes an AI assistant that can view and modify persona dat
 │  /api/persona-agent/clear   - Clear conversation                │
 │  /api/persona-agent/history - Get conversation history          │
 │                                                                 │
-│  Tools (13 total):                                              │
+│  Tools (15 total):                                              │
 │    Server: web_search (Anthropic-hosted, real-time web search)  │
 │    Read: get_persona, list_test_inputs, get_test_input,         │
 │          list_all_personas, inspect_persona                     │
+│    Test: run_test, run_all_tests                                │
 │    Write: update_persona_name, update_system_prompt,            │
 │           create_test_input, update_test_input,                 │
 │           unlink_test_input, delete_test_input                  │

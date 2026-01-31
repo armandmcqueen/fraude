@@ -1,9 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { JsonPersonaStorageProvider, JsonTestInputStorageProvider } from '@/lib/storage';
 import { TestInput } from '@/types';
+import { config } from '@/lib/config';
 
 const personaStorage = new JsonPersonaStorageProvider();
 const testInputStorage = new JsonTestInputStorageProvider();
+
+// Anthropic client for running tests
+const anthropic = new Anthropic({
+  apiKey: config.anthropicApiKey,
+});
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -104,6 +110,29 @@ export const customTools: Anthropic.Messages.Tool[] = [
         },
       },
       required: ['id'],
+    },
+  },
+  {
+    name: 'run_test',
+    description: 'Run the persona against a specific test input and see the response. Use this to verify that your changes to the system prompt produce the desired behavior.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        testInputId: {
+          type: 'string',
+          description: 'The ID of the test input to run',
+        },
+      },
+      required: ['testInputId'],
+    },
+  },
+  {
+    name: 'run_all_tests',
+    description: 'Run the persona against all linked test inputs and see all responses. Use this to get an overview of how the persona responds to various prompts.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
     },
   },
   {
@@ -258,6 +287,7 @@ export async function executeAgentTool(
           return { output: 'Persona not found', isError: true };
         }
         persona.name = name;
+        persona.hidden = false;  // Unhide on edit (same as manual save)
         persona.updatedAt = new Date();
         await personaStorage.updatePersona(persona);
         return { output: `Successfully updated persona name to "${name}"` };
@@ -270,6 +300,7 @@ export async function executeAgentTool(
           return { output: 'Persona not found', isError: true };
         }
         persona.systemPrompt = systemPrompt;
+        persona.hidden = false;  // Unhide on edit (same as manual save)
         persona.updatedAt = new Date();
         await personaStorage.updatePersona(persona);
         return { output: 'Successfully updated system prompt' };
@@ -302,6 +333,97 @@ export async function executeAgentTool(
         return { output: JSON.stringify({ id: testInput.id, content: testInput.content }, null, 2) };
       }
 
+      case 'run_test': {
+        const testInputId = input.testInputId as string;
+        const persona = await personaStorage.getPersona(personaId);
+        if (!persona) {
+          return { output: 'Persona not found', isError: true };
+        }
+
+        const testInput = await testInputStorage.getTestInput(testInputId);
+        if (!testInput) {
+          return { output: `Test input with ID "${testInputId}" not found`, isError: true };
+        }
+
+        // Run the persona against the test input
+        try {
+          const response = await anthropic.messages.create({
+            model: config.defaultModel,
+            max_tokens: 4096,
+            system: persona.systemPrompt,
+            messages: [{ role: 'user', content: testInput.content }],
+          });
+
+          const responseText = response.content
+            .filter((block): block is Anthropic.Messages.TextBlock => block.type === 'text')
+            .map((block) => block.text)
+            .join('\n');
+
+          return {
+            output: JSON.stringify({
+              testInput: { id: testInput.id, content: testInput.content },
+              response: responseText,
+            }, null, 2),
+          };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          return { output: `Error running test: ${message}`, isError: true };
+        }
+      }
+
+      case 'run_all_tests': {
+        const persona = await personaStorage.getPersona(personaId);
+        if (!persona) {
+          return { output: 'Persona not found', isError: true };
+        }
+
+        if (persona.testInputIds.length === 0) {
+          return { output: 'No test inputs configured for this persona' };
+        }
+
+        const results: { testInput: { id: string; content: string }; response: string; error?: string }[] = [];
+
+        for (const testInputId of persona.testInputIds) {
+          const testInput = await testInputStorage.getTestInput(testInputId);
+          if (!testInput) {
+            results.push({
+              testInput: { id: testInputId, content: '(not found)' },
+              response: '',
+              error: 'Test input not found',
+            });
+            continue;
+          }
+
+          try {
+            const response = await anthropic.messages.create({
+              model: config.defaultModel,
+              max_tokens: 4096,
+              system: persona.systemPrompt,
+              messages: [{ role: 'user', content: testInput.content }],
+            });
+
+            const responseText = response.content
+              .filter((block): block is Anthropic.Messages.TextBlock => block.type === 'text')
+              .map((block) => block.text)
+              .join('\n');
+
+            results.push({
+              testInput: { id: testInput.id, content: testInput.content },
+              response: responseText,
+            });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            results.push({
+              testInput: { id: testInput.id, content: testInput.content },
+              response: '',
+              error: message,
+            });
+          }
+        }
+
+        return { output: JSON.stringify({ results }, null, 2) };
+      }
+
       case 'create_test_input': {
         const content = input.content as string;
         const persona = await personaStorage.getPersona(personaId);
@@ -319,6 +441,7 @@ export async function executeAgentTool(
 
         // Link to persona
         persona.testInputIds.push(testInput.id);
+        persona.hidden = false;  // Unhide on edit (same as manual save)
         persona.updatedAt = new Date();
         await personaStorage.updatePersona(persona);
 
@@ -352,6 +475,7 @@ export async function executeAgentTool(
 
         // Remove from persona's list (test input remains globally)
         persona.testInputIds = persona.testInputIds.filter((tid) => tid !== id);
+        persona.hidden = false;  // Unhide on edit (same as manual save)
         persona.updatedAt = new Date();
         await personaStorage.updatePersona(persona);
 
@@ -368,6 +492,7 @@ export async function executeAgentTool(
         // Remove from persona's list if linked
         if (persona.testInputIds.includes(id)) {
           persona.testInputIds = persona.testInputIds.filter((tid) => tid !== id);
+          persona.hidden = false;  // Unhide on edit (same as manual save)
           persona.updatedAt = new Date();
           await personaStorage.updatePersona(persona);
         }

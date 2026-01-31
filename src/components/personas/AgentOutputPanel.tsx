@@ -171,8 +171,19 @@ export function AgentOutputPanel({
             onClick={(e) => e.stopPropagation()}
           >
             {error && (
-              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">
-                {error}
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-red-700 dark:text-red-400">Error</span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(error)}
+                    className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-2 py-1 rounded bg-red-100 dark:bg-red-900/50"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <pre className="text-xs text-red-700 dark:text-red-400 whitespace-pre-wrap font-mono overflow-auto max-h-48">
+                  {error}
+                </pre>
               </div>
             )}
 

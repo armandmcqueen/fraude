@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '@/lib/config';
 import { log } from '@/lib/logger';
+import { createAgentCallRecorder } from '@/lib/llm-recorder';
 import { JsonPersonaStorageProvider, JsonAgentSessionStorageProvider } from '@/lib/storage';
 import { AgentChatSession, AgentTurn, UserTurn, AssistantTextTurn, ToolCallTurn, ToolResultTurn, ServerToolUseTurn, WebSearchResultTurn, WebSearchResult } from '@/types';
 import { agentTools, executeAgentTool } from './tools';
@@ -33,6 +34,7 @@ You are helping the user edit a specific persona. You can:
 - View and modify the persona's name
 - View and modify the persona's system prompt
 - Manage test inputs (prompts used to test how the persona responds)
+- Run tests to see how the persona responds to test inputs
 - Search the web for information to help build better personas
 
 ## Current Persona
@@ -46,13 +48,34 @@ Name: ${personaName}
 - After making changes, briefly confirm what you did
 - Use tools to read and modify the persona data
 - Test inputs are shared globally across personas. When removing a test input, prefer unlink_test_input (removes from this persona only, preserves globally). Only use delete_test_input (permanent deletion) when the user explicitly wants it gone entirely, e.g. if they're unhappy with one you just created.
-- You have access to web search - use it when you need current information or want to research best practices for creating effective personas.`;
+- You have access to web search - use it when you need current information or want to research best practices for creating effective personas.
+- After making significant changes to the system prompt, consider using run_test or run_all_tests to verify the persona behaves as expected.`;
 }
 
 /**
  * Convert our flat turn sequence into Claude's message format.
  */
 function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessageParam[] {
+  // Debug: log the turns we're converting
+  log.info('Converting turns to Claude messages:', {
+    turnCount: turns.length,
+    turnTypes: turns.map(t => t.type),
+  });
+
+  // Check for mismatched server_tool_use and web_search_result
+  const serverToolUseIds = turns
+    .filter((t): t is ServerToolUseTurn => t.type === 'server_tool_use')
+    .map(t => t.toolUseId);
+  const webSearchResultIds = turns
+    .filter((t): t is WebSearchResultTurn => t.type === 'web_search_result')
+    .map(t => t.toolUseId);
+
+  for (const id of serverToolUseIds) {
+    if (!webSearchResultIds.includes(id)) {
+      log.error('Missing web_search_result for server_tool_use:', { toolUseId: id });
+    }
+  }
+
   const messages: Anthropic.Messages.MessageParam[] = [];
   let currentAssistantContent: Anthropic.Messages.ContentBlockParam[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -126,14 +149,10 @@ function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessagePa
         break;
 
       case 'web_search_result':
-        // Flush assistant content before web search results
-        if (currentAssistantContent.length > 0) {
-          messages.push({ role: 'assistant', content: currentAssistantContent });
-          currentAssistantContent = [];
-        }
-        // Web search results go in user content
+        // Web search results go in ASSISTANT content (Anthropic returns both server_tool_use and result together)
+        // Don't flush - keep it in the same assistant message as the server_tool_use
         if (turn.error) {
-          currentUserContent.push({
+          currentAssistantContent.push({
             type: 'web_search_tool_result',
             tool_use_id: turn.toolUseId,
             content: {
@@ -142,7 +161,7 @@ function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessagePa
             },
           });
         } else {
-          currentUserContent.push({
+          currentAssistantContent.push({
             type: 'web_search_tool_result',
             tool_use_id: turn.toolUseId,
             content: turn.results.map((r) => ({
@@ -187,6 +206,30 @@ export async function POST(request: NextRequest) {
     const existingSession = await sessionStorage.getSession(persona.agentChatSessionId);
     if (existingSession) {
       session = existingSession;
+
+      // Clean up orphaned server_tool_use turns (missing web_search_result)
+      // This can happen if the session was interrupted during a web search
+      const serverToolUseIds = new Set(
+        session.turns
+          .filter((t): t is ServerToolUseTurn => t.type === 'server_tool_use')
+          .map(t => t.toolUseId)
+      );
+      const webSearchResultIds = new Set(
+        session.turns
+          .filter((t): t is WebSearchResultTurn => t.type === 'web_search_result')
+          .map(t => t.toolUseId)
+      );
+
+      const orphanedIds = [...serverToolUseIds].filter(id => !webSearchResultIds.has(id));
+      if (orphanedIds.length > 0) {
+        log.warn('Found orphaned server_tool_use turns, removing:', { orphanedIds });
+        session.turns = session.turns.filter(t => {
+          if (t.type === 'server_tool_use' && orphanedIds.includes(t.toolUseId)) {
+            return false;
+          }
+          return true;
+        });
+      }
     } else {
       // Session was deleted, create new one
       session = {
@@ -229,12 +272,42 @@ export async function POST(request: NextRequest) {
         let continueLoop = true;
 
         while (continueLoop) {
+          // SAFEGUARD: Check for orphaned server_tool_use and remove them before API call
+          const serverToolIds = session.turns
+            .filter((t): t is ServerToolUseTurn => t.type === 'server_tool_use')
+            .map(t => t.toolUseId);
+          const resultIds = new Set(
+            session.turns
+              .filter((t): t is WebSearchResultTurn => t.type === 'web_search_result')
+              .map(t => t.toolUseId)
+          );
+          const orphanedServerToolIds = serverToolIds.filter(id => !resultIds.has(id));
+          if (orphanedServerToolIds.length > 0) {
+            log.error('SAFEGUARD: Removing orphaned server_tool_use before API call:', { orphanedServerToolIds });
+            session.turns = session.turns.filter(t => {
+              if (t.type === 'server_tool_use' && orphanedServerToolIds.includes(t.toolUseId)) {
+                return false;
+              }
+              return true;
+            });
+          }
+
           const claudeMessages = turnsToClaudeMessages(session.turns);
+          const systemPrompt = getAgentSystemPrompt(personaId, persona.name);
+          log.info('Sending to Claude:', { messageCount: claudeMessages.length });
+
+          // Create recorder to capture this API call
+          const recorder = createAgentCallRecorder(
+            personaId,
+            config.defaultModel,
+            systemPrompt,
+            { messages: claudeMessages, tools: agentTools }
+          );
 
           const response = await anthropic.messages.create({
             model: config.defaultModel,
             max_tokens: 4096,
-            system: getAgentSystemPrompt(personaId, persona.name),
+            system: systemPrompt,
             messages: claudeMessages,
             tools: agentTools,
             stream: true,
@@ -244,11 +317,38 @@ export async function POST(request: NextRequest) {
           let currentTextId = '';
           const toolCalls: { id: string; toolUseId: string; name: string; input: Record<string, unknown> }[] = [];
           let currentToolInput = '';
+          const contentBlockTypes: string[] = [];  // Track for recording
+          let lastStopReason: string | null = null;
           let currentToolName = '';
           let currentToolUseId = '';
           let isServerTool = false;  // Track if current tool is server-side
 
           for await (const event of response) {
+            // Record ALL streaming events for debugging
+            recorder.addEvent(event);
+
+            // Debug: log ALL streaming events
+            log.info('Stream event:', {
+              type: event.type,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              contentBlockType: (event as any).content_block?.type,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              index: (event as any).index,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              stopReason: (event as any).delta?.stop_reason,
+            });
+
+            // Track content block types for recording
+            if (event.type === 'content_block_start') {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              contentBlockTypes.push((event as any).content_block?.type || 'unknown');
+            }
+            // Track stop reason
+            if (event.type === 'message_delta') {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              lastStopReason = (event as any).delta?.stop_reason || null;
+            }
+
             if (event.type === 'content_block_start') {
               if (event.content_block.type === 'text') {
                 currentTextId = generateId();
@@ -270,10 +370,18 @@ export async function POST(request: NextRequest) {
                 const turnId = generateId();
                 const content = webSearchBlock.content;
 
+                log.info('Received web_search_tool_result:', {
+                  tool_use_id: webSearchBlock.tool_use_id,
+                  contentType: typeof content,
+                  isArray: Array.isArray(content),
+                });
+
+                let webSearchTurn: WebSearchResultTurn;
+
                 // Check if it's an error or results
-                if (!Array.isArray(content) && 'error_code' in content) {
+                if (!Array.isArray(content) && content && typeof content === 'object' && 'error_code' in content) {
                   const errorContent = content as { type: string; error_code: string };
-                  const webSearchTurn: WebSearchResultTurn = {
+                  webSearchTurn = {
                     type: 'web_search_result',
                     id: turnId,
                     toolUseId: webSearchBlock.tool_use_id,
@@ -284,17 +392,9 @@ export async function POST(request: NextRequest) {
                     },
                     createdAt: new Date(),
                   };
-                  session.turns.push(webSearchTurn);
-                  sendEvent({
-                    type: 'web_search_result',
-                    id: turnId,
-                    toolUseId: webSearchBlock.tool_use_id,
-                    results: [],
-                    error: webSearchTurn.error,
-                  });
-                } else if (Array.isArray(content)) {
-                  // It's an array of results
-                  const resultsArray = content as Anthropic.Messages.WebSearchResultBlock[];
+                } else {
+                  // It's an array of results (or treat as empty if unexpected format)
+                  const resultsArray = Array.isArray(content) ? content as Anthropic.Messages.WebSearchResultBlock[] : [];
                   const results: WebSearchResult[] = resultsArray.map((r) => ({
                     type: 'web_search_result' as const,
                     url: r.url,
@@ -303,21 +403,30 @@ export async function POST(request: NextRequest) {
                     pageAge: r.page_age ?? undefined,
                   }));
 
-                  const webSearchTurn: WebSearchResultTurn = {
+                  webSearchTurn = {
                     type: 'web_search_result',
                     id: turnId,
                     toolUseId: webSearchBlock.tool_use_id,
                     results,
                     createdAt: new Date(),
                   };
-                  session.turns.push(webSearchTurn);
-                  sendEvent({
-                    type: 'web_search_result',
-                    id: turnId,
-                    toolUseId: webSearchBlock.tool_use_id,
-                    results,
-                  });
                 }
+
+                session.turns.push(webSearchTurn);
+                sendEvent({
+                  type: 'web_search_result',
+                  id: webSearchTurn.id,
+                  toolUseId: webSearchTurn.toolUseId,
+                  results: webSearchTurn.results,
+                  error: webSearchTurn.error,
+                });
+              } else {
+                // Log any unhandled content block types
+                log.warn('Unhandled content_block_start type:', {
+                  type: event.content_block.type,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  block: event.content_block as any,
+                });
               }
             } else if (event.type === 'content_block_delta') {
               if (event.delta.type === 'text_delta') {
@@ -423,9 +532,16 @@ export async function POST(request: NextRequest) {
               }
             }
           }
+
+          // Record this API call iteration
+          await recorder.success(lastStopReason, contentBlockTypes);
         }
 
         // Save session
+        log.info('Saving session with turns:', {
+          turnCount: session.turns.length,
+          turnTypes: session.turns.map(t => t.type),
+        });
         session.updatedAt = new Date();
         await sessionStorage.saveSession(session);
 

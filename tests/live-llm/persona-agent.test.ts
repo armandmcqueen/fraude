@@ -42,11 +42,38 @@ interface ErrorEvent {
   message: string;
 }
 
+interface ServerToolUseEvent {
+  type: 'server_tool_use';
+  id: string;
+  toolUseId: string;
+  toolName: string;
+  input: Record<string, unknown>;
+}
+
+interface WebSearchResultEvent {
+  type: 'web_search_result';
+  id: string;
+  toolUseId: string;
+  results: Array<{
+    type: string;
+    url: string;
+    title: string;
+    encryptedContent?: string;
+    pageAge?: string;
+  }>;
+  error?: {
+    type: string;
+    errorCode: string;
+  };
+}
+
 type AgentStreamEvent =
   | TextDeltaEvent
   | TextCompleteEvent
   | ToolCallEvent
   | ToolResultEvent
+  | ServerToolUseEvent
+  | WebSearchResultEvent
   | DoneEvent
   | ErrorEvent;
 
@@ -565,6 +592,196 @@ describe('Persona Agent Tests', () => {
 
       console.log('After clear, response:', fullText);
     }, 90000);
+  });
+
+  // ===========================================================================
+  // Web Search (Server-Side Tools)
+  // ===========================================================================
+
+  describe('Web Search', () => {
+    it('should trigger web search for current information queries', async () => {
+      const { events, error } = await sendAgentMessage(
+        testPersona.id,
+        'Search the web to find what the current weather is in San Francisco today.'
+      );
+
+      expect(error).toBeUndefined();
+
+      // Log all events for debugging
+      console.log('All event types:', events.map((e) => e.type));
+      console.log('Full events:', JSON.stringify(events, null, 2));
+
+      // Should have server_tool_use event for web_search
+      const serverToolUses = filterEvents<ServerToolUseEvent>(events, 'server_tool_use');
+      console.log('Server tool uses:', serverToolUses);
+
+      // Should have web_search_result event
+      const webSearchResults = filterEvents<WebSearchResultEvent>(events, 'web_search_result');
+      console.log('Web search results:', webSearchResults);
+
+      // Verify we got the web search events
+      expect(serverToolUses.length).toBeGreaterThan(0);
+      expect(serverToolUses[0].toolName).toBe('web_search');
+
+      expect(webSearchResults.length).toBeGreaterThan(0);
+
+      // Should end with done
+      const doneEvents = filterEvents<DoneEvent>(events, 'done');
+      expect(doneEvents).toHaveLength(1);
+
+      const fullText = getFullText(events);
+      console.log('Agent response:', fullText);
+    }, 120000);
+
+    it('should handle web search results and include them in response', async () => {
+      const { events, error } = await sendAgentMessage(
+        testPersona.id,
+        'Search the web to find who is the current CEO of Anthropic.'
+      );
+
+      expect(error).toBeUndefined();
+
+      // Should have web_search_result with actual results
+      const webSearchResults = filterEvents<WebSearchResultEvent>(events, 'web_search_result');
+
+      if (webSearchResults.length > 0) {
+        const result = webSearchResults[0];
+
+        // Should have results array (not error)
+        if (!result.error) {
+          expect(result.results).toBeDefined();
+          expect(result.results.length).toBeGreaterThan(0);
+
+          // Results should have url and title
+          const firstResult = result.results[0];
+          expect(firstResult.url).toBeDefined();
+          expect(firstResult.title).toBeDefined();
+
+          console.log('Web search returned', result.results.length, 'results');
+          console.log('First result:', firstResult.title, '-', firstResult.url);
+        } else {
+          console.log('Web search error:', result.error);
+        }
+      }
+
+      // Response should mention Dario (Amodei, CEO of Anthropic)
+      const fullText = getFullText(events);
+      expect(fullText.toLowerCase()).toMatch(/dario|amodei|ceo/);
+
+      console.log('Agent response:', fullText);
+    }, 120000);
+
+    it('should properly serialize web search state in multi-turn conversation', async () => {
+      // First message triggers web search
+      const { events: events1, error: error1 } = await sendAgentMessage(
+        testPersona.id,
+        'Search the web to find the latest news about AI safety research.'
+      );
+
+      expect(error1).toBeUndefined();
+
+      const serverToolUses1 = filterEvents<ServerToolUseEvent>(events1, 'server_tool_use');
+      const webSearchResults1 = filterEvents<WebSearchResultEvent>(events1, 'web_search_result');
+
+      console.log('Turn 1 - server_tool_use count:', serverToolUses1.length);
+      console.log('Turn 1 - web_search_result count:', webSearchResults1.length);
+
+      // Second message should have context from first (including web search)
+      const { events: events2, error: error2 } = await sendAgentMessage(
+        testPersona.id,
+        'Based on what you just found, what is one key insight?'
+      );
+
+      expect(error2).toBeUndefined();
+
+      // Should be able to reference previous search results
+      const fullText = getFullText(events2);
+      expect(fullText.length).toBeGreaterThan(0);
+
+      // Should not error out (the main bug we're tracking)
+      const errorEvents = filterEvents<ErrorEvent>(events2, 'error');
+      expect(errorEvents.length).toBe(0);
+
+      console.log('Turn 2 response:', fullText);
+    }, 180000);
+  });
+
+  // ===========================================================================
+  // Test Execution Tools
+  // ===========================================================================
+
+  describe('Test Execution', () => {
+    it('should run a single test with run_test tool', async () => {
+      // Create test input and link to persona
+      const testInput = await createTestInput('What is 2+2? Reply with just the number.');
+      createdTestInputIds.push(testInput.id);
+
+      const updatedPersona = { ...testPersona, testInputIds: [testInput.id] };
+      await fetch(`${serverUrl}/api/storage/personas/${testPersona.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPersona),
+      });
+
+      const { events, error } = await sendAgentMessage(
+        testPersona.id,
+        'Run the test input about 2+2 and show me the response.'
+      );
+
+      expect(error).toBeUndefined();
+
+      // Should have tool_call for run_test
+      const toolCalls = filterEvents<ToolCallEvent>(events, 'tool_call');
+      const runTestCall = toolCalls.find((tc) => tc.toolName === 'run_test');
+      expect(runTestCall).toBeDefined();
+
+      // Should have tool_result with the test output
+      const toolResults = filterEvents<ToolResultEvent>(events, 'tool_result');
+      const runTestResult = toolResults.find((tr) => tr.toolUseId === runTestCall?.toolUseId);
+      expect(runTestResult).toBeDefined();
+      expect(runTestResult?.output).toContain('4'); // The answer
+
+      console.log('Tool calls:', toolCalls.map((tc) => tc.toolName));
+      console.log('Run test result:', runTestResult?.output);
+    }, 90000);
+
+    it('should run all tests with run_all_tests tool', async () => {
+      // Create multiple test inputs
+      const testInput1 = await createTestInput('What is 1+1?');
+      const testInput2 = await createTestInput('What is 3+3?');
+      createdTestInputIds.push(testInput1.id, testInput2.id);
+
+      const updatedPersona = { ...testPersona, testInputIds: [testInput1.id, testInput2.id] };
+      await fetch(`${serverUrl}/api/storage/personas/${testPersona.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPersona),
+      });
+
+      const { events, error } = await sendAgentMessage(
+        testPersona.id,
+        'Run all test inputs and summarize the results.'
+      );
+
+      expect(error).toBeUndefined();
+
+      // Should have tool_call for run_all_tests
+      const toolCalls = filterEvents<ToolCallEvent>(events, 'tool_call');
+      const runAllTestsCall = toolCalls.find((tc) => tc.toolName === 'run_all_tests');
+      expect(runAllTestsCall).toBeDefined();
+
+      // Should have tool_result with all test outputs
+      const toolResults = filterEvents<ToolResultEvent>(events, 'tool_result');
+      const runAllResult = toolResults.find((tr) => tr.toolUseId === runAllTestsCall?.toolUseId);
+      expect(runAllResult).toBeDefined();
+
+      // Result should contain both test outputs
+      expect(runAllResult?.output).toContain('1+1');
+      expect(runAllResult?.output).toContain('3+3');
+
+      console.log('Tool calls:', toolCalls.map((tc) => tc.toolName));
+      console.log('Run all tests result:', runAllResult?.output);
+    }, 120000);
   });
 
   // ===========================================================================

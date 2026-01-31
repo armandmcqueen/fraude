@@ -2,6 +2,31 @@
 
 Historical record of completed tasks.
 
+## 2026-01-30 - Web Search Bug Fix & Testing
+
+### Bug Fix
+- Fix multi-turn conversation serialization for web search
+- `web_search_tool_result` must be in same assistant message content as `server_tool_use` (not a separate user message)
+- Add LLM call recording for agent calls (`createAgentCallRecorder`) to capture streaming events for debugging
+- Enhanced error display in AgentOutputPanel with copy button for error text
+
+### Testing
+- Add comprehensive web search tests to `tests/live-llm/persona-agent.test.ts`:
+  - Test that web search can be triggered for current information queries
+  - Test that web search results are received and included in responses
+  - Test multi-turn conversation with web search state serialization
+- Add test execution tool tests:
+  - Test `run_test` tool runs a single test input and returns response
+  - Test `run_all_tests` tool runs all linked test inputs and returns responses
+
+## 2026-01-29 - Agent Test Execution
+
+### Test Tools
+- Add `run_test` tool - runs persona against a specific test input, returns response
+- Add `run_all_tests` tool - runs persona against all linked test inputs, returns all responses
+- Agent can now verify changes by seeing actual persona behavior
+- Tests run server-side using the same model as regular chat
+
 ## 2026-01-29 - Web Search for Persona Agent
 
 ### Server-Side Tools
@@ -20,13 +45,15 @@ Historical record of completed tasks.
 - Implement `/api/persona-agent/clear` and `/api/persona-agent/history` endpoints
 - Add `agentChatSessionId` field to Persona type
 
-### Agent Tools (13 total)
+### Agent Tools (15 total)
 - `web_search` - Anthropic server-side web search (real-time web access)
 - `get_persona` - get current persona details
 - `update_persona_name` - update persona name
 - `update_system_prompt` - update system prompt
 - `list_test_inputs` - list test inputs for current persona
 - `get_test_input` - get specific test input
+- `run_test` - run persona against a test input and see response
+- `run_all_tests` - run persona against all test inputs and see responses
 - `create_test_input` - create and link new test input
 - `update_test_input` - update test input content
 - `unlink_test_input` - remove test input from persona (keeps globally, preferred)

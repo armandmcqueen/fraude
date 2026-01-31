@@ -500,7 +500,7 @@ Response: `AgentTurn[]`
 
 ## Agent Tools
 
-The persona editor agent has access to 13 tools:
+The persona editor agent has access to 15 tools:
 
 ### Server Tools (Anthropic-hosted)
 | Tool | Description |
@@ -515,6 +515,12 @@ The persona editor agent has access to 13 tools:
 | `get_test_input` | Get specific test input by ID |
 | `list_all_personas` | List all personas in the system (read-only) |
 | `inspect_persona` | View another persona's details by ID (read-only) |
+
+### Test Tools
+| Tool | Description |
+|------|-------------|
+| `run_test` | Run the persona against a specific test input and see the response |
+| `run_all_tests` | Run the persona against all linked test inputs and see all responses |
 
 ### Write Tools
 | Tool | Description |
