@@ -351,8 +351,11 @@ export async function POST(request: NextRequest) {
 
             if (event.type === 'content_block_start') {
               if (event.content_block.type === 'text') {
-                currentTextId = generateId();
-                currentTextContent = '';
+                // Only generate a new ID if we don't have one yet
+                // This allows us to accumulate text across multiple content blocks
+                if (!currentTextId) {
+                  currentTextId = generateId();
+                }
               } else if (event.content_block.type === 'tool_use') {
                 currentToolUseId = event.content_block.id;
                 currentToolName = event.content_block.name;
@@ -436,20 +439,25 @@ export async function POST(request: NextRequest) {
                 currentToolInput += event.delta.partial_json;
               }
             } else if (event.type === 'content_block_stop') {
-              // Finalize text block
-              if (currentTextContent) {
-                const textTurn: AssistantTextTurn = {
-                  type: 'assistant_text',
-                  id: currentTextId,
-                  content: currentTextContent,
-                  createdAt: new Date(),
-                };
-                session.turns.push(textTurn);
-                sendEvent({ type: 'text_complete', id: currentTextId, content: currentTextContent });
-                currentTextContent = '';
-              }
+              // Note: We don't create text turns here anymore.
+              // Text is accumulated across content blocks and flushed before tool calls
+              // or at the end of the streaming response.
+
               // Finalize tool call (custom tools only - server tools are handled differently)
               if (currentToolName && !isServerTool) {
+                // Flush accumulated text BEFORE the tool call to maintain order
+                if (currentTextContent) {
+                  const textTurn: AssistantTextTurn = {
+                    type: 'assistant_text',
+                    id: currentTextId,
+                    content: currentTextContent,
+                    createdAt: new Date(),
+                  };
+                  session.turns.push(textTurn);
+                  sendEvent({ type: 'text_complete', id: currentTextId, content: currentTextContent });
+                  currentTextContent = '';
+                  currentTextId = '';
+                }
                 let input: Record<string, unknown> = {};
                 try {
                   input = currentToolInput ? JSON.parse(currentToolInput) : {};
@@ -474,6 +482,20 @@ export async function POST(request: NextRequest) {
                 currentToolUseId = '';
                 currentToolInput = '';
               } else if (currentToolName && isServerTool) {
+                // Flush accumulated text BEFORE the server tool use to maintain order
+                if (currentTextContent) {
+                  const textTurn: AssistantTextTurn = {
+                    type: 'assistant_text',
+                    id: currentTextId,
+                    content: currentTextContent,
+                    createdAt: new Date(),
+                  };
+                  session.turns.push(textTurn);
+                  sendEvent({ type: 'text_complete', id: currentTextId, content: currentTextContent });
+                  currentTextContent = '';
+                  currentTextId = '';
+                }
+
                 // Server tool use - record it but don't execute (Anthropic executes it)
                 let input: Record<string, unknown> = {};
                 try {
@@ -531,6 +553,20 @@ export async function POST(request: NextRequest) {
                 toolCalls.length = 0; // Clear for next iteration
               }
             }
+          }
+
+          // Flush any remaining accumulated text at the end of this API call
+          if (currentTextContent) {
+            const textTurn: AssistantTextTurn = {
+              type: 'assistant_text',
+              id: currentTextId,
+              content: currentTextContent,
+              createdAt: new Date(),
+            };
+            session.turns.push(textTurn);
+            sendEvent({ type: 'text_complete', id: currentTextId, content: currentTextContent });
+            currentTextContent = '';
+            currentTextId = '';
           }
 
           // Record this API call iteration
