@@ -57,6 +57,8 @@ export function PersonaSelector({
   }, [editingId, onFetchPersona]);
 
   const [isCreating, setIsCreating] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const pendingDeletePersona = pendingDeleteId ? personas.find(p => p.id === pendingDeleteId) : null;
 
   const handleCreateInStudio = async () => {
     if (isCreating) return;
@@ -213,7 +215,7 @@ export function PersonaSelector({
               {/* Delete button */}
               {canDelete && (
                 <button
-                  onClick={() => onDelete(persona.id)}
+                  onClick={() => setPendingDeleteId(persona.id)}
                   disabled={disabled}
                   className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
                   title="Delete persona"
@@ -278,7 +280,7 @@ export function PersonaSelector({
                 </Link>
                 {canDelete && (
                   <button
-                    onClick={() => onDelete(persona.id)}
+                    onClick={() => setPendingDeleteId(persona.id)}
                     disabled={disabled}
                     className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50"
                     title="Delete persona"
@@ -359,6 +361,37 @@ export function PersonaSelector({
           )}
           New Persona
         </button>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {pendingDeleteId && pendingDeletePersona && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Delete Persona
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Are you sure you want to delete &ldquo;{pendingDeletePersona.name}&rdquo;? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setPendingDeleteId(null)}
+                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onDelete(pendingDeleteId);
+                  setPendingDeleteId(null);
+                }}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
