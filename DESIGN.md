@@ -193,10 +193,11 @@ Implementations:
 
 1. **Conversation titles**: Auto-generated using LLM (Haiku 4.5) based on initial user message (not user-editable)
 2. **Conversation deletion**: Not supported in initial version
-3. **Error handling**: Inline in the chat pane (errors displayed as message-like elements)
-4. **Keyboard shortcuts**: Enter to send, Shift+Enter for newline (no additional shortcuts)
-5. **UI Layout**: Sidebar (conversation list) + main chat view, desktop only
-6. **Testing model**: Live LLM tests start a real Next.js server and make HTTP requests (no UI). Vitest as test runner. Mock at Anthropic SDK level for fast/cheap integration tests if needed.
+3. **Conversation export**: Export to markdown or PDF via browser download/print dialog
+4. **Error handling**: Inline in the chat pane (errors displayed as message-like elements)
+5. **Keyboard shortcuts**: Enter to send, Shift+Enter for newline (no additional shortcuts)
+6. **UI Layout**: Sidebar (conversation list) + main chat view, desktop only
+7. **Testing model**: Live LLM tests start a real Next.js server and make HTTP requests (no UI). Vitest as test runner. Mock at Anthropic SDK level for fast/cheap integration tests if needed.
 
 ## Persona Editor Agent
 

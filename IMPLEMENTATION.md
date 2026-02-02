@@ -66,7 +66,8 @@ fraude/
 │   │
 │   ├── lib/                      # Utilities and config
 │   │   ├── config.ts             # API keys, model IDs, defaults
-│   │   ├── llm-recorder.ts       # Records LLM calls to disk
+│   │   ├── export.ts             # Conversation export (markdown, PDF)
+│   │   ├── llm-recorder.ts       # Records LLM calls to disk (chat, complete, agent)
 │   │   ├── logger.ts             # Logging wrapper (log.debug/info/warn/error)
 │   │   ├── personas.ts           # Default persona definitions for prepopulation
 │   │   ├── test-inputs.ts        # Slash commands and @resource expansion
@@ -283,13 +284,30 @@ interface WebSearchResultTurn {
 }
 ```
 
+## Conversation Export
+
+Export conversations to markdown or PDF format via `src/lib/export.ts`.
+
+- `exportAsMarkdown(conversation, getPersonaName?)` - Downloads `.md` file
+- `exportAsPDF(conversation, getPersonaName?)` - Opens print dialog for PDF save
+- Includes title, model, timestamps, and all messages with persona attribution
+
 ## LLM Call Recording
 
-All LLM API calls are recorded to `data/llm-calls/<conversation-id>/` for debugging.
+All LLM API calls are recorded to `data/llm-calls/` for debugging.
 
+### Chat/Complete Calls
+- **Location**: `data/llm-calls/<conversation-id>/`
 - **Filename**: `<call-type>-<timestamp>.json` (e.g., `chat-1737561234567.json`)
-- **Recorded on**: Both `/api/chat` and `/api/complete` routes
+- **Recorded on**: `/api/chat` and `/api/complete` routes
 - **Includes**: Request details, full response, latency, and any errors
+
+### Agent Calls
+- **Location**: `data/llm-calls/persona-<persona-id>/`
+- **Filename**: `agent-<timestamp>.json`
+- **Recorded on**: `/api/persona-agent/chat` route
+- **Includes**: Full request (messages, tools), all streaming events, response summary, latency
+- **Helper**: `createAgentCallRecorder()` collects streaming events during agentic loop
 
 ## LLM Call Inspector
 
