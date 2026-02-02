@@ -263,7 +263,7 @@ Each milestone is independently testable. Stop after each milestone to verify be
 
 ---
 
-### Milestone 1: SummaryService (Isolated)
+### Milestone 1: SummaryService (Isolated) ✅
 
 **Goal**: Create SummaryService and verify it works in isolation via live LLM test.
 
@@ -283,15 +283,15 @@ npm run test:live -- summary
 ```
 
 **What to verify**:
-- [ ] Test passes
-- [ ] Summary is 2-4 sentences
-- [ ] Summary captures key points of input text
+- [x] Test passes
+- [x] Summary is 2-4 sentences
+- [x] Summary captures key points of input text
 
 **No manual testing** - this is purely automated.
 
 ---
 
-### Milestone 2: Message Type Changes
+### Milestone 2: Message Type Changes ✅
 
 **Goal**: Add summary fields to Message type. Verify existing functionality still works.
 
@@ -299,16 +299,16 @@ npm run test:live -- summary
 - `src/types/index.ts` - Add summary fields to Message interface
 
 **What to verify**:
-- [ ] App still runs (`npm run dev`)
-- [ ] Existing conversations load correctly
-- [ ] Can send messages and receive responses
-- [ ] No TypeScript errors
+- [x] App still runs (`npm run dev`)
+- [x] Existing conversations load correctly
+- [x] Can send messages and receive responses
+- [x] No TypeScript errors
 
 **Manual test**: Open app, load an existing conversation, send a new message.
 
 ---
 
-### Milestone 3: Wire SummaryService into MultiPersonaChatSession
+### Milestone 3: Wire SummaryService into MultiPersonaChatSession ✅
 
 **Goal**: Generate summaries after each persona response. Summaries saved to storage.
 
@@ -329,35 +329,35 @@ npm run test:live -- summary-integration
 ```
 
 **What to verify (automated)**:
-- [ ] Send message → response has summary field populated
-- [ ] Summary is stored in conversation JSON
-- [ ] Short responses (< threshold) have no summary
+- [x] Send message → response has summary field populated
+- [x] Summary is stored in conversation JSON
+- [x] Short responses (< threshold) have no summary
 
 **What to verify (manual)**:
-- [ ] Open app, send a message that gets a long response
-- [ ] Check `data/conversations/<id>.json` - verify `summary` field exists on assistant message
-- [ ] Reload page - summary persists
+- [x] Open app, send a message that gets a long response
+- [x] Check `data/conversations/<id>.json` - verify `summary` field exists on assistant message
+- [x] Reload page - summary persists
 
 ---
 
-### Milestone 4: UI - Display Summary with Toggle
+### Milestone 4: UI - Display Summary with Toggle ✅
 
 **Goal**: Show summary by default in Message component, with toggle to show full content.
 
 **Files to modify**:
-- `src/components/chat/Message.tsx` - Add summary display logic and toggle
+- `src/components/chat/Message.tsx` - Add summary display logic and toggle (uses shadcn/ui Switch)
 
 **What to verify (manual)**:
-- [ ] Assistant messages show summary (shorter text) by default
-- [ ] "Show full response" link/button is visible
-- [ ] Clicking toggle shows full content
-- [ ] Clicking again shows summary
-- [ ] Messages without summary show full content (no toggle)
-- [ ] User messages unchanged
+- [x] Assistant messages show summary (shorter text) by default
+- [x] Toggle switch is visible with "Summary" / "Full" labels
+- [x] Clicking toggle shows full content
+- [x] Clicking again shows summary
+- [x] Messages without summary show full content (no toggle)
+- [x] User messages unchanged
 
 ---
 
-### Milestone 5: UI Polish - Loading State
+### Milestone 5: UI Polish - Loading State ✅
 
 **Goal**: Show "Summarizing..." indicator while summary is being generated.
 
@@ -368,29 +368,26 @@ npm run test:live -- summary-integration
 - `src/components/chat/Message.tsx` - Show indicator
 
 **What to verify (manual)**:
-- [ ] After response streams complete, see "Summarizing..." briefly
-- [ ] Indicator disappears when summary appears
-- [ ] If summarization fails, indicator disappears and full content shown
+- [x] After response streams complete, see "Summarizing..." briefly
+- [x] Indicator disappears when summary appears
+- [x] If summarization fails, indicator disappears and full content shown
 
 ---
 
-### Milestone 6: Parallel Mode Support
+### Milestone 6: Parallel Mode Support ✅
 
 **Goal**: In parallel execution mode, summarize all persona responses in parallel.
 
 **Files to modify**:
 - `src/services/MultiActorChatSession.ts` - Parallel summarization in `executeParallel`
 
-**Test command**:
-```bash
-npm run test:live -- summary-integration
-```
+**Note**: Already implemented - each `streamPersonaResponseParallel()` call includes summary generation, and since they all run via `Promise.all()`, summaries are generated in parallel.
 
 **What to verify (manual)**:
-- [ ] Switch to parallel mode in app
-- [ ] Send message with multiple personas
-- [ ] All responses get summaries
-- [ ] Summaries appear roughly at the same time (not sequential delay)
+- [x] Switch to parallel mode in app
+- [x] Send message with multiple personas
+- [x] All responses get summaries
+- [x] Summaries appear roughly at the same time (not sequential delay)
 
 ---
 
@@ -429,9 +426,13 @@ Slides would be generated similarly to summaries, with a different prompt that o
 
 Existing messages without summaries will display full content (graceful degradation). No data migration needed.
 
-## Open Questions
+## Open Questions (Resolved)
 
 1. **Summary length**: 2-4 sentences feels right, but may need tuning based on actual usage
-2. **Re-summarization**: Should users be able to request a new summary? (Probably not initially)
-3. **Streaming indicator**: Should we show "Generating summary..." after response completes? (Probably yes)
-4. **Parallel summarization**: In parallel mode, should we summarize all responses in parallel too? (Yes, for consistency)
+2. **Re-summarization**: Should users be able to request a new summary? → Not implemented initially
+3. **Streaming indicator**: Should we show "Generating summary..." after response completes? → ✅ Implemented ("Summarizing..." indicator)
+4. **Parallel summarization**: In parallel mode, should we summarize all responses in parallel too? → ✅ Yes, implemented
+
+## Post-Implementation Enhancements
+
+1. **User message context**: The summarization prompt now includes the user's question for better context. This helps the summary accurately reflect what the persona was responding to.

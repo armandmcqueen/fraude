@@ -21,6 +21,7 @@ Fraude is a chat application that provides a conversational interface to Claude.
 | Framework | Next.js 14+ (App Router) |
 | Language | TypeScript (strict mode) |
 | Styling | Tailwind CSS |
+| Components | shadcn/ui (Radix UI primitives, incremental adoption) |
 | Markdown | react-markdown + remark-gfm |
 | Code Highlighting | react-syntax-highlighter (Prism) |
 | LLM SDK | @anthropic-ai/sdk (server-side only) |
@@ -106,6 +107,7 @@ class MultiPersonaChatSession {
     llmClient: APILLMClient;
     storageClient: StorageClient;
     titleService: TitleService;
+    summaryService?: SummaryService;  // Optional for backwards compatibility
     personas: Persona[];
     orchestrator: Orchestrator;
     config?: ConversationConfig;
@@ -168,6 +170,23 @@ class TitleService {
   generate(conversationId: string, userMessage: string): Promise<string>;
 }
 ```
+
+#### SummaryService
+Generates concise summaries of long assistant messages using a fast LLM (Haiku 4.5).
+
+```typescript
+class SummaryService {
+  constructor(llmClient: APILLMClient);
+  shouldSummarize(content: string): boolean;  // Threshold: 500 chars
+  generate(conversationId: string, content: string, personaName?: string, userMessage?: string): Promise<string | null>;
+}
+```
+
+Key features:
+- Only summarizes messages above 500 characters
+- Includes user's question as context for better summaries
+- Summary stored on Message object, displayed by default in UI
+- Toggle switch (shadcn/ui) allows viewing full content
 
 #### StorageClient (interface)
 ```typescript
