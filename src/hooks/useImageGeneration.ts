@@ -7,8 +7,34 @@ import { config } from '@/lib/config';
 
 const imageClient = new APIImageStorageClient();
 
+export const IMAGE_GEN_STORAGE_KEYS = {
+  model: 'image-gen-model',
+  slideMode: 'image-gen-slide-mode',
+  draft: 'image-gen-draft',
+};
+
 function generateId(): string {
   return `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+function getStoredValue<T>(key: string, defaultValue: T): T {
+  if (typeof window === 'undefined') return defaultValue;
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored === null) return defaultValue;
+    return JSON.parse(stored) as T;
+  } catch {
+    return defaultValue;
+  }
+}
+
+function setStoredValue<T>(key: string, value: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 export interface UseImageGenerationResult {
@@ -38,12 +64,20 @@ export function useImageGeneration(): UseImageGenerationResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load persisted settings on mount
+  useEffect(() => {
+    setSelectedModel(getStoredValue(IMAGE_GEN_STORAGE_KEYS.model, config.defaultImageModel));
+    setIsSlideMode(getStoredValue(IMAGE_GEN_STORAGE_KEYS.slideMode, false));
+  }, []);
+
   const selectModel = useCallback((model: string) => {
     setSelectedModel(model);
+    setStoredValue(IMAGE_GEN_STORAGE_KEYS.model, model);
   }, []);
 
   const setSlideMode = useCallback((enabled: boolean) => {
     setIsSlideMode(enabled);
+    setStoredValue(IMAGE_GEN_STORAGE_KEYS.slideMode, enabled);
   }, []);
 
   const refresh = useCallback(async () => {

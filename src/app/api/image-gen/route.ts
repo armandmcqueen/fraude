@@ -3,21 +3,30 @@ import { GoogleGenAI, Modality } from '@google/genai';
 import Anthropic from '@anthropic-ai/sdk';
 import { config, availableImageModels } from '@/lib/config';
 
-const PROMPT_ENHANCER_SYSTEM = `You are an expert at creating prompts for image generation models. Your task is to take raw content (ideas, text, concepts) and transform them into effective prompts for generating slide-style images.
+const PROMPT_ENHANCER_SYSTEM = `You are an expert at creating prompts for image generation models. Your task is to take raw content (ideas, text, concepts) and transform them into effective prompts for generating text-centric presentation slides.
 
-A good slide image prompt should:
-1. Be visually clear and impactful
-2. Work well as a presentation slide background or illustration
-3. Use professional, clean aesthetics
-4. Be specific about composition, colors, and style
+IMPORTANT: The generated image should BE the slide itself - the entire image is the slide. Do NOT describe a picture that contains a slide, or a slide on a screen, or a presentation setup. The image IS the slide content directly.
+
+The slides should be TEXT-CENTRIC. The text on the slide should communicate the core idea - someone should be able to understand the main point just by reading the slide.
+
+A good slide prompt should include:
+1. A clear title or headline that captures the main idea (in quotes)
+2. Optionally 2-4 bullet points or key phrases that support the main idea (each in quotes)
+3. An attractive background (gradient, pattern, or subtle imagery)
+4. Clear typography
 
 Guidelines:
-- Transform abstract concepts into concrete visual metaphors
-- Suggest appropriate styles (e.g., "flat illustration", "minimalist", "professional infographic style")
-- Include composition guidance (e.g., "centered", "left third", "with space for text on right")
-- Specify color palette when relevant (e.g., "corporate blue tones", "warm gradient background")
-- Keep the prompt concise but descriptive (aim for 2-4 sentences)
-- IMPORTANT: When text should appear on the slide, specify the EXACT text in quotes. For example: with the title "AI in Healthcare" in bold white text at the top. Be selective about what text to include - usually just a short title or key phrase.
+- Extract the CORE MESSAGE from the input and express it as text on the slide
+- Specify exact text in quotes: "Main Title Here" and supporting text like "• First point" "• Second point"
+- Keep text concise - distill ideas into punchy, memorable phrases
+- Text does NOT need to be large
+- Balance visual interest with readability
+
+TEXT STYLING: If you want specific text styling, you must be explicit about WHICH words get WHAT styling. Use markdown within the quoted text to communicate styling:
+- **bold text** for emphasis
+- *italic text* for subtle emphasis
+- Use descriptions like: the word "Innovation" in bold, "key metrics" in italic
+- Or: "**Innovation** drives *everything*" to show exact styling
 
 Output ONLY the image generation prompt, nothing else. No explanations, no preamble.`;
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, KeyboardEvent } from 'react';
+import { useState, useCallback, useEffect, useRef, KeyboardEvent } from 'react';
+import { IMAGE_GEN_STORAGE_KEYS } from '@/hooks/useImageGeneration';
 
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
@@ -10,12 +11,50 @@ interface PromptInputProps {
 
 export function PromptInput({ onSubmit, disabled, isSlideMode }: PromptInputProps) {
   const [prompt, setPrompt] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const draft = localStorage.getItem(IMAGE_GEN_STORAGE_KEYS.draft);
+      if (draft) {
+        setPrompt(draft);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  // Save draft to localStorage on change
+  const handleChange = useCallback((value: string) => {
+    setPrompt(value);
+    try {
+      localStorage.setItem(IMAGE_GEN_STORAGE_KEYS.draft, value);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
+    }
+  }, [prompt]);
 
   const handleSubmit = useCallback(() => {
     const trimmed = prompt.trim();
     if (!trimmed || disabled) return;
     onSubmit(trimmed);
     setPrompt('');
+    // Clear draft from localStorage
+    try {
+      localStorage.removeItem(IMAGE_GEN_STORAGE_KEYS.draft);
+    } catch {
+      // Ignore storage errors
+    }
   }, [prompt, disabled, onSubmit]);
 
   const handleKeyDown = useCallback(
@@ -29,22 +68,23 @@ export function PromptInput({ onSubmit, disabled, isSlideMode }: PromptInputProp
   );
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 items-end">
       <textarea
+        ref={textareaRef}
         value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={isSlideMode
           ? "Enter your slide content (AI will create the image prompt)..."
           : "Describe the image you want to generate..."}
         disabled={disabled}
-        rows={1}
-        className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        rows={2}
+        className="flex-1 px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed min-h-[60px] max-h-[300px]"
       />
       <button
         onClick={handleSubmit}
         disabled={disabled || !prompt.trim()}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed self-end"
       >
         {disabled ? (
           <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
