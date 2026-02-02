@@ -2,15 +2,18 @@ import { Conversation, Message } from '@/types';
 import { APILLMClient } from './llm';
 import { StorageClient } from './storage/types';
 import { TitleService } from './TitleService';
+import { SummaryService } from './SummaryService';
 import { EventEmitter, ChatSessionEvents } from './types';
 import { OrchestrationPersona, Orchestrator, ConversationConfig, DEFAULT_CONFIG } from './orchestration';
 import { generateId } from '@/lib/utils';
 import { config } from '@/lib/config';
+import { log } from '@/lib/logger';
 
 export interface MultiPersonaChatSessionDeps {
   llmClient: APILLMClient;
   storageClient: StorageClient;
   titleService: TitleService;
+  summaryService?: SummaryService; // Optional for backwards compatibility
   personas: OrchestrationPersona[];
   orchestrator: Orchestrator;
   config?: ConversationConfig;
@@ -27,6 +30,7 @@ export class MultiPersonaChatSession {
   private llmClient: APILLMClient;
   private storageClient: StorageClient;
   private titleService: TitleService;
+  private summaryService: SummaryService | null;
   private personas: OrchestrationPersona[];
   private personaNameMap: Map<string, string> = new Map();
   private orchestrator: Orchestrator;
@@ -39,6 +43,7 @@ export class MultiPersonaChatSession {
     this.llmClient = deps.llmClient;
     this.storageClient = deps.storageClient;
     this.titleService = deps.titleService;
+    this.summaryService = deps.summaryService ?? null;
     this.personas = deps.personas;
     this.orchestrator = deps.orchestrator;
     this.conversationConfig = deps.config ?? DEFAULT_CONFIG;
@@ -169,9 +174,9 @@ export class MultiPersonaChatSession {
 
       // Execute based on configuration
       if (this.conversationConfig.executionMode === 'parallel') {
-        await this.executeParallel(responsePlan);
+        await this.executeParallel(responsePlan, content);
       } else {
-        await this.executeSequential(responsePlan);
+        await this.executeSequential(responsePlan, content);
       }
 
       // Generate title if this is the first message exchange
@@ -205,9 +210,9 @@ export class MultiPersonaChatSession {
   /**
    * Execute personas sequentially, one at a time.
    */
-  private async executeSequential(personas: OrchestrationPersona[]): Promise<void> {
+  private async executeSequential(personas: OrchestrationPersona[], userMessageContent: string): Promise<void> {
     for (const persona of personas) {
-      await this.streamPersonaResponse(persona);
+      await this.streamPersonaResponse(persona, userMessageContent);
     }
   }
 
@@ -215,7 +220,7 @@ export class MultiPersonaChatSession {
    * Execute personas in parallel, all at once.
    * Note: parallel mode always uses isolated context.
    */
-  private async executeParallel(personas: OrchestrationPersona[]): Promise<void> {
+  private async executeParallel(personas: OrchestrationPersona[], userMessageContent: string): Promise<void> {
     if (!this.conversation) return;
 
     // Capture the conversation state before any responses
@@ -246,7 +251,8 @@ export class MultiPersonaChatSession {
       this.streamPersonaResponseParallel(
         persona,
         personaMessages.get(persona.id)!,
-        historySnapshot
+        historySnapshot,
+        userMessageContent
       )
     );
 
@@ -257,7 +263,7 @@ export class MultiPersonaChatSession {
   /**
    * Stream a response from a single persona (sequential mode).
    */
-  private async streamPersonaResponse(persona: OrchestrationPersona): Promise<void> {
+  private async streamPersonaResponse(persona: OrchestrationPersona, userMessageContent: string): Promise<void> {
     if (!this.conversation) return;
 
     // Create placeholder message for this persona
@@ -312,6 +318,9 @@ export class MultiPersonaChatSession {
         throw new Error(chunk.error || 'Stream error');
       }
     }
+
+    // Generate summary if content is long enough
+    await this.generateSummaryForMessage(personaMessage.id, personaContent, persona.name, userMessageContent);
   }
 
   /**
@@ -321,7 +330,8 @@ export class MultiPersonaChatSession {
   private async streamPersonaResponseParallel(
     persona: OrchestrationPersona,
     personaMessage: Message,
-    historySnapshot: string
+    historySnapshot: string,
+    userMessageContent: string
   ): Promise<void> {
     if (!this.conversation) return;
 
@@ -357,6 +367,68 @@ export class MultiPersonaChatSession {
         throw new Error(chunk.error || 'Stream error');
       }
     }
+
+    // Generate summary if content is long enough
+    await this.generateSummaryForMessage(personaMessage.id, personaContent, persona.name, userMessageContent);
+  }
+
+  /**
+   * Generate a summary for a message if it's long enough.
+   */
+  private async generateSummaryForMessage(
+    messageId: string,
+    content: string,
+    personaName: string,
+    userMessageContent: string
+  ): Promise<void> {
+    if (!this.conversation || !this.summaryService) return;
+    if (!this.summaryService.shouldSummarize(content)) return;
+
+    this.events.emit('summaryStart', { messageId });
+
+    try {
+      const summary = await this.summaryService.generate(
+        this.conversation.id,
+        content,
+        personaName,
+        userMessageContent
+      );
+
+      if (summary) {
+        this.updateMessageSummary(messageId, summary);
+      }
+    } catch (error) {
+      log.warn('Failed to generate summary:', error);
+      // Continue without summary - not a critical error
+    } finally {
+      this.events.emit('summaryEnd', { messageId });
+    }
+  }
+
+  /**
+   * Update the summary fields of a message by ID.
+   */
+  private updateMessageSummary(messageId: string, summary: string): void {
+    if (!this.conversation) return;
+
+    const messages = this.conversation.messages.map((msg) =>
+      msg.id === messageId
+        ? {
+            ...msg,
+            summary,
+            summaryModel: config.utilityModel,
+            summaryGeneratedAt: new Date(),
+          }
+        : msg
+    );
+
+    this.conversation = {
+      ...this.conversation,
+      messages,
+      updatedAt: new Date(),
+    };
+
+    this.events.emit('conversationUpdated', this.conversation);
   }
 
   /**

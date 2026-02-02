@@ -34,6 +34,12 @@ export interface ChatSessionEvents {
   /** Fired when streaming is cancelled by user */
   streamCancelled: { messageId: string };
 
+  /** Fired when summary generation starts for a message */
+  summaryStart: { messageId: string };
+
+  /** Fired when summary generation completes for a message */
+  summaryEnd: { messageId: string };
+
   /** Fired on errors */
   error: Error;
 }

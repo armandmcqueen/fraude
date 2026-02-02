@@ -44,3 +44,17 @@ This project uses a file-based TODO system in the `todo/` directory.
 - `DESIGN.md` - Stable architecture and design decisions
 - `IMPLEMENTATION.md` - Implementation details (will evolve)
 - `todo/` - Task tracking
+
+## Component Library: shadcn/ui
+
+This project uses **shadcn/ui** for UI components. We are adopting it incrementally.
+
+### Incremental Adoption Strategy
+
+When working on a feature that involves UI:
+1. Check if the feature requires a component that should use shadcn/ui (toggles, buttons, dialogs, dropdowns, etc.)
+2. If a custom/janky implementation exists, ask the user: "Should we migrate this to shadcn/ui first?"
+3. Wait for user confirmation before proceeding with the migration
+4. Only then continue with the feature work
+
+Do NOT proactively migrate all components at once - only migrate when touching that area of the codebase.

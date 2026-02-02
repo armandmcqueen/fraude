@@ -8,6 +8,7 @@ import { ViewMode } from '@/types';
 import {
   MultiPersonaChatSession,
   TitleService,
+  SummaryService,
   APILLMClient,
   APIStorageClient,
   sequentialOrchestrator,
@@ -76,11 +77,13 @@ export default function Home() {
     const llmClient = new APILLMClient();
     const storageClient = new APIStorageClient();
     const titleService = new TitleService(llmClient);
+    const summaryService = new SummaryService(llmClient);
 
     return new MultiPersonaChatSession({
       llmClient,
       storageClient,
       titleService,
+      summaryService,
       personas: [], // Start empty, will be updated via useEffect
       orchestrator: sequentialOrchestrator,
     });

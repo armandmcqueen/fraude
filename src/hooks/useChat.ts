@@ -18,6 +18,7 @@ export function useChat(session: ChatSessionInterface, options?: UseChatOptions)
   );
   const [isStreaming, setIsStreaming] = useState(session.getIsStreaming());
   const [error, setError] = useState<string | null>(null);
+  const [summarizingMessageIds, setSummarizingMessageIds] = useState<Set<string>>(new Set());
 
   // Track if we've notified about conversation update (to avoid duplicate calls)
   const lastSavedId = useRef<string | null>(null);
@@ -48,11 +49,25 @@ export function useChat(session: ChatSessionInterface, options?: UseChatOptions)
       setError(err.message);
     });
 
+    const unsubSummaryStart = session.events.on('summaryStart', ({ messageId }) => {
+      setSummarizingMessageIds((prev) => new Set(prev).add(messageId));
+    });
+
+    const unsubSummaryEnd = session.events.on('summaryEnd', ({ messageId }) => {
+      setSummarizingMessageIds((prev) => {
+        const next = new Set(prev);
+        next.delete(messageId);
+        return next;
+      });
+    });
+
     return () => {
       unsubConversation();
       unsubStreamStart();
       unsubStreamEnd();
       unsubError();
+      unsubSummaryStart();
+      unsubSummaryEnd();
     };
   }, [session, options]);
 
@@ -98,6 +113,7 @@ export function useChat(session: ChatSessionInterface, options?: UseChatOptions)
     conversation,
     isStreaming,
     error,
+    summarizingMessageIds,
     loadConversation,
     createNewConversation,
     sendMessage,

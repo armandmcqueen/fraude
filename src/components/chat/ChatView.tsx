@@ -93,6 +93,7 @@ export function ChatView({
     conversation,
     isStreaming,
     error,
+    summarizingMessageIds,
     loadConversation,
     createNewConversation,
     setModel,
@@ -239,6 +240,7 @@ export function ChatView({
         getPersonaName={getPersonaName}
         viewMode={viewMode}
         personaOrder={selectedPersonaIds}
+        summarizingMessageIds={summarizingMessageIds}
       />
 
       {/* Input */}

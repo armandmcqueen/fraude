@@ -6,6 +6,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { log } from './logger';
+import { config } from './config';
 
 export type LLMCallType = 'chat' | 'complete' | 'agent';
 
@@ -47,7 +48,7 @@ export interface AgentLLMCallRecord {
   error: string | null;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data', 'llm-calls');
+const DATA_DIR = path.resolve(process.cwd(), config.llmCallsDir);
 
 /**
  * Ensure the directory for a conversation's recordings exists.

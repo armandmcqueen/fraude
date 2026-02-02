@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local json-based conversation storage
 data/
+
+# test artifacts
+var/

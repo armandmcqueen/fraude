@@ -15,6 +15,8 @@ interface FocusedMessageGroupProps {
   getPersonaName?: (id: string) => string;
   /** Order of persona IDs for consistent tab ordering */
   personaOrder?: string[];
+  /** Set of message IDs currently being summarized */
+  summarizingMessageIds?: Set<string>;
 }
 
 function PersonaTabs({
@@ -74,6 +76,7 @@ export function FocusedMessageGroup({
   isStreaming,
   getPersonaName,
   personaOrder = [],
+  summarizingMessageIds = new Set(),
 }: FocusedMessageGroupProps) {
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -150,6 +153,7 @@ export function FocusedMessageGroup({
                   message={activeResponse}
                   isStreaming={isStreaming && !activeResponse.content}
                   getPersonaName={getPersonaName}
+                  isSummarizing={summarizingMessageIds.has(activeResponse.id)}
                 />
               </div>
             </div>

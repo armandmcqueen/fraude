@@ -12,6 +12,8 @@ interface MessageListProps {
   viewMode?: ViewMode;
   /** Order of persona IDs for consistent tab ordering in focused mode */
   personaOrder?: string[];
+  /** Set of message IDs currently being summarized */
+  summarizingMessageIds?: Set<string>;
 }
 
 export function MessageList({
@@ -20,6 +22,7 @@ export function MessageList({
   getPersonaName,
   viewMode = 'expanded',
   personaOrder = [],
+  summarizingMessageIds = new Set(),
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -96,6 +99,7 @@ export function MessageList({
               isStreaming={hasStreamingResponse}
               getPersonaName={getPersonaName}
               personaOrder={personaOrder}
+              summarizingMessageIds={summarizingMessageIds}
             />
           );
         })}
@@ -123,6 +127,7 @@ export function MessageList({
             message={message}
             isStreaming={isActivelyStreaming}
             getPersonaName={getPersonaName}
+            isSummarizing={summarizingMessageIds.has(message.id)}
           />
         );
       })}

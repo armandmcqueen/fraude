@@ -1,21 +1,29 @@
 'use client';
 
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message as MessageType } from '@/types';
 import { getPersonaName as getDefaultPersonaName } from '@/lib/personas';
+import { Switch } from '@/components/ui/switch';
 
 interface MessageProps {
   message: MessageType;
   isStreaming?: boolean;
   getPersonaName?: (id: string) => string;
+  isSummarizing?: boolean;
 }
 
-export function Message({ message, isStreaming, getPersonaName }: MessageProps) {
+export function Message({ message, isStreaming, getPersonaName, isSummarizing }: MessageProps) {
+  const [showFull, setShowFull] = useState(false);
   const isUser = message.role === 'user';
   const resolvePersonaName = getPersonaName || getDefaultPersonaName;
+
+  // Determine if we have a summary to show
+  const hasSummary = !isUser && !!message.summary;
+  const displayContent = hasSummary && !showFull ? message.summary : message.content;
 
   return (
     <div
@@ -29,8 +37,26 @@ export function Message({ message, isStreaming, getPersonaName }: MessageProps) 
         }`}
       >
         {!isUser && message.personaId && (
-          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            {resolvePersonaName(message.personaId)}
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              {resolvePersonaName(message.personaId)}
+            </span>
+            {hasSummary && (
+              <div className="flex items-center gap-1.5 ml-2">
+                <span className={`text-xs ${!showFull ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
+                  Summary
+                </span>
+                <Switch
+                  size="sm"
+                  checked={showFull}
+                  onCheckedChange={setShowFull}
+                  aria-label={showFull ? 'Show summary' : 'Show full response'}
+                />
+                <span className={`text-xs ${showFull ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
+                  Full
+                </span>
+              </div>
+            )}
           </div>
         )}
         {isUser ? (
@@ -67,12 +93,17 @@ export function Message({ message, isStreaming, getPersonaName }: MessageProps) 
                 },
               }}
             >
-              {message.content || (isStreaming ? '...' : '')}
+              {displayContent || (isStreaming ? '...' : '')}
             </ReactMarkdown>
           </div>
         )}
         {isStreaming && !message.content && (
           <span className="inline-block animate-pulse">Thinking...</span>
+        )}
+        {isSummarizing && (
+          <span className="inline-block animate-pulse text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Summarizing...
+          </span>
         )}
       </div>
     </div>

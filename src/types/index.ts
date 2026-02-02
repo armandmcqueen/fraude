@@ -5,6 +5,11 @@ export interface Message {
   content: string;
   createdAt: Date;
   personaId?: string; // Which persona sent this (undefined for user messages)
+
+  // Summarization fields (assistant messages only)
+  summary?: string;          // LLM-generated summary
+  summaryModel?: string;     // Model used to generate summary
+  summaryGeneratedAt?: Date; // When summary was generated
 }
 
 // Full conversation with messages

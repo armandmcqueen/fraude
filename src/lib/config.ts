@@ -1,16 +1,20 @@
+// Base data directory - can be overridden via TEST_DATA_DIR for parallel test isolation
+const baseDataDir = process.env.TEST_DATA_DIR || './data';
+
 export const config = {
   // LLM - API key hardcoded for now (single user prototype)
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || 'YOUR_API_KEY_HERE',
   defaultModel: 'claude-sonnet-4-5-20250929',
   utilityModel: 'claude-haiku-4-5-20251001', // Fast model for utility tasks (title generation, etc.)
 
-  // Storage
-  dataDir: './data/conversations',
-  personasDir: './data/personas',
-  resourcesDir: './data/resources',
-  testInputsDir: './data/test-inputs',
-  settingsFile: './data/settings.json',
-  agentSessionsDir: './data/agent-sessions',
+  // Storage - all paths relative to baseDataDir for test isolation
+  dataDir: `${baseDataDir}/conversations`,
+  personasDir: `${baseDataDir}/personas`,
+  resourcesDir: `${baseDataDir}/resources`,
+  testInputsDir: `${baseDataDir}/test-inputs`,
+  settingsFile: `${baseDataDir}/settings.json`,
+  agentSessionsDir: `${baseDataDir}/agent-sessions`,
+  llmCallsDir: `${baseDataDir}/llm-calls`,
 
   // UI
   maxMessageLength: 100000,

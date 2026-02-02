@@ -157,7 +157,7 @@ function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessagePa
             tool_use_id: turn.toolUseId,
             content: {
               type: 'web_search_tool_result_error',
-              error_code: turn.error.errorCode,
+              error_code: turn.error.errorCode as Anthropic.Beta.BetaWebSearchToolResultErrorCode,
             },
           });
         } else {
@@ -165,10 +165,10 @@ function turnsToClaudeMessages(turns: AgentTurn[]): Anthropic.Messages.MessagePa
             type: 'web_search_tool_result',
             tool_use_id: turn.toolUseId,
             content: turn.results.map((r) => ({
-              type: 'web_search_result',
+              type: 'web_search_result' as const,
               url: r.url,
               title: r.title,
-              encrypted_content: r.encryptedContent,
+              encrypted_content: r.encryptedContent || '',
               page_age: r.pageAge,
             })),
           });

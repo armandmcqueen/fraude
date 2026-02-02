@@ -35,7 +35,11 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts",
-    ".next/dev/dev/types/**/*.ts"
+    ".next/dev/dev/types/**/*.ts",
+    "/var/folders/08/xmjh7n3s3rz3l8tyxgwv1r8m0000gn/T/fraude-test-next-1OW6kq/dev/types/**/*.ts",
+    "/var/folders/08/xmjh7n3s3rz3l8tyxgwv1r8m0000gn/T/fraude-test-next-1OW6kq/dev/dev/types/**/*.ts",
+    "/var/folders/08/xmjh7n3s3rz3l8tyxgwv1r8m0000gn/T/fraude-test-next-CUneYh/dev/types/**/*.ts",
+    "/var/folders/08/xmjh7n3s3rz3l8tyxgwv1r8m0000gn/T/fraude-test-next-CUneYh/dev/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

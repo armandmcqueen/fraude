@@ -4,6 +4,7 @@ export type { ChatSessionDeps } from './ChatSession';
 export { MultiPersonaChatSession, MultiActorChatSession } from './MultiActorChatSession';
 export type { MultiPersonaChatSessionDeps, MultiActorChatSessionDeps } from './MultiActorChatSession';
 export { TitleService } from './TitleService';
+export { SummaryService, SUMMARY_THRESHOLD } from './SummaryService';
 
 // Orchestration
 export * from './orchestration';
