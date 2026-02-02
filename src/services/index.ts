@@ -17,8 +17,8 @@ export type { ChatSessionEvents, ChatSessionInterface } from './types';
 export { APILLMClient } from './llm';
 
 // Storage (client-side)
-export type { StorageClient, PersonaStorageClient, ResourceStorageClient, TestInputStorageClient, SettingsStorageClient } from './storage';
-export { APIStorageClient, InMemoryStorageClient, APIPersonaStorageClient, APIResourceStorageClient, APITestInputStorageClient, APISettingsStorageClient } from './storage';
+export type { StorageClient, PersonaStorageClient, ResourceStorageClient, TestInputStorageClient, SettingsStorageClient, GeneratedImageWithData } from './storage';
+export { APIStorageClient, InMemoryStorageClient, APIPersonaStorageClient, APIResourceStorageClient, APITestInputStorageClient, APISettingsStorageClient, APIImageStorageClient } from './storage';
 
 // Prompt (client-side)
 export type { PromptProvider } from './prompt';

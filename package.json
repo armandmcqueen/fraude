@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@google/genai": "^1.39.0",
     "@radix-ui/react-switch": "^1.2.6",
     "@tailwindcss/typography": "^0.5.19",
     "class-variance-authority": "^0.7.1",

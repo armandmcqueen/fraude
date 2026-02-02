@@ -4,4 +4,5 @@ export { JsonResourceStorageProvider } from './json-resource-storage';
 export { JsonTestInputStorageProvider } from './json-test-input-storage';
 export { JsonSettingsStorageProvider } from './json-settings-storage';
 export { JsonAgentSessionStorageProvider } from './json-agent-session-storage';
+export { JsonImageStorageProvider } from './json-image-storage';
 export type { StorageProvider, PersonaStorageProvider, ResourceStorageProvider, TestInputStorageProvider, SettingsStorageProvider, AgentSessionStorageProvider } from './types';

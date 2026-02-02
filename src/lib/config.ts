@@ -7,6 +7,10 @@ export const config = {
   defaultModel: 'claude-sonnet-4-5-20250929',
   utilityModel: 'claude-haiku-4-5-20251001', // Fast model for utility tasks (title generation, etc.)
 
+  // Gemini (for image generation)
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  defaultImageModel: 'gemini-3-pro-image-preview',
+
   // Storage - all paths relative to baseDataDir for test isolation
   dataDir: `${baseDataDir}/conversations`,
   personasDir: `${baseDataDir}/personas`,
@@ -15,6 +19,7 @@ export const config = {
   settingsFile: `${baseDataDir}/settings.json`,
   agentSessionsDir: `${baseDataDir}/agent-sessions`,
   llmCallsDir: `${baseDataDir}/llm-calls`,
+  imagesDir: `${baseDataDir}/images`,
 
   // UI
   maxMessageLength: 100000,
@@ -30,4 +35,9 @@ export const availableModels = [
   { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
   { id: 'claude-3-7-sonnet-20250219', name: 'Claude Sonnet 3.7' },
   { id: 'claude-3-haiku-20240307', name: 'Claude Haiku 3' },
+] as const;
+
+export const availableImageModels = [
+  { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash' },
+  { id: 'gemini-3-pro-image-preview', name: 'Gemini 3 Pro (Preview)' },
 ] as const;

@@ -264,3 +264,23 @@ export type AgentStreamEvent =
   | WebSearchResultEvent
   | DoneEvent
   | AgentErrorEvent;
+
+// =============================================================================
+// Image Generation Types
+// =============================================================================
+
+export interface GeneratedImage {
+  id: string;
+  prompt: string;
+  imagePath: string;     // Path to saved image file (relative to imagesDir)
+  mimeType: string;
+  width?: number;
+  height?: number;
+  createdAt: Date;
+}
+
+export interface GeneratedImageSummary {
+  id: string;
+  prompt: string;
+  createdAt: Date;
+}
