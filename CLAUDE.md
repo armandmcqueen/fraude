@@ -58,3 +58,10 @@ When working on a feature that involves UI:
 4. Only then continue with the feature work
 
 Do NOT proactively migrate all components at once - only migrate when touching that area of the codebase.
+
+## Debugging Preferences
+
+**Do NOT use browser-based debugging unless explicitly asked.** Browser automation is slow and makes development take too long. Instead:
+- Write code and let the user test it manually
+- Use console logs, error messages, and TypeScript errors to debug
+- Only use browser automation when the user specifically requests it

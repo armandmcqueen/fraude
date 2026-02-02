@@ -271,8 +271,10 @@ export type AgentStreamEvent =
 
 export interface GeneratedImage {
   id: string;
-  prompt: string;
-  imagePath: string;     // Path to saved image file (relative to imagesDir)
+  prompt: string;           // Original user prompt
+  slidePrompt?: string;     // AI-generated slide prompt (when slide mode enabled)
+  isSlideMode?: boolean;    // Whether slide mode was used
+  imagePath: string;        // Path to saved image file (relative to imagesDir)
   mimeType: string;
   width?: number;
   height?: number;
@@ -282,5 +284,7 @@ export interface GeneratedImage {
 export interface GeneratedImageSummary {
   id: string;
   prompt: string;
+  slidePrompt?: string;
+  isSlideMode?: boolean;
   createdAt: Date;
 }

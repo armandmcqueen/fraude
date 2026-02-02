@@ -9,7 +9,7 @@ const imageClient = new APIImageStorageClient();
 interface FilmStripProps {
   images: GeneratedImageSummary[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
   onDelete: (id: string) => void;
 }
 
@@ -90,13 +90,36 @@ function Thumbnail({ image, isSelected, onClick, onDelete }: ThumbnailProps) {
   );
 }
 
-export function FilmStrip({ images, selectedId, onSelect, onDelete }: FilmStripProps) {
-  if (images.length === 0) {
-    return null;
-  }
+function NewImageButton({ isSelected, onClick }: { isSelected: boolean; onClick: () => void }) {
+  return (
+    <div
+      className={`relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer border-2 transition-all flex items-center justify-center bg-gray-100 dark:bg-gray-800 ${
+        isSelected
+          ? 'border-blue-500 ring-2 ring-blue-500/50'
+          : 'border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+      }`}
+      onClick={onClick}
+      title="Generate new image"
+    >
+      <svg
+        className={`w-8 h-8 ${isSelected ? 'text-blue-500' : 'text-gray-400'}`}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+      </svg>
+    </div>
+  );
+}
 
+export function FilmStrip({ images, selectedId, onSelect, onDelete }: FilmStripProps) {
   return (
     <div className="flex flex-col gap-2 overflow-y-auto py-2 px-1">
+      <NewImageButton
+        isSelected={selectedId === null}
+        onClick={() => onSelect(null)}
+      />
       {images.map((image) => (
         <Thumbnail
           key={image.id}

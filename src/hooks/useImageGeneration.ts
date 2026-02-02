@@ -16,12 +16,14 @@ export interface UseImageGenerationResult {
   selectedImage: GeneratedImageWithData | null;
   selectedId: string | null;
   selectedModel: string;
+  isSlideMode: boolean;
   isGenerating: boolean;
   isLoading: boolean;
   error: string | null;
   generate: (prompt: string) => Promise<string | null>;
   selectImage: (id: string | null) => Promise<void>;
   selectModel: (model: string) => void;
+  setSlideMode: (enabled: boolean) => void;
   deleteImage: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -30,13 +32,18 @@ export function useImageGeneration(): UseImageGenerationResult {
   const [images, setImages] = useState<GeneratedImageSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<GeneratedImageWithData | null>(null);
-  const [selectedModel, setSelectedModel] = useState(config.defaultImageModel);
+  const [selectedModel, setSelectedModel] = useState<string>(config.defaultImageModel);
+  const [isSlideMode, setIsSlideMode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const selectModel = useCallback((model: string) => {
     setSelectedModel(model);
+  }, []);
+
+  const setSlideMode = useCallback((enabled: boolean) => {
+    setIsSlideMode(enabled);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -84,7 +91,7 @@ export function useImageGeneration(): UseImageGenerationResult {
       const response = await fetch('/api/image-gen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, model: selectedModel }),
+        body: JSON.stringify({ prompt, model: selectedModel, isSlideMode }),
       });
 
       if (!response.ok) {
@@ -92,11 +99,14 @@ export function useImageGeneration(): UseImageGenerationResult {
         throw new Error(data.error || 'Image generation failed');
       }
 
-      const { base64Data, mimeType } = await response.json();
+      const { base64Data, mimeType, slidePrompt } = await response.json();
 
       // Save the image to storage
       const id = generateId();
-      await imageClient.saveImage(id, prompt, base64Data, mimeType);
+      await imageClient.saveImage(id, prompt, base64Data, mimeType, {
+        slidePrompt,
+        isSlideMode,
+      });
 
       // Refresh the list and select the new image
       await refresh();
@@ -110,7 +120,7 @@ export function useImageGeneration(): UseImageGenerationResult {
     } finally {
       setIsGenerating(false);
     }
-  }, [refresh, selectImage, selectedModel]);
+  }, [refresh, selectImage, selectedModel, isSlideMode]);
 
   const deleteImage = useCallback(async (id: string) => {
     try {
@@ -134,12 +144,14 @@ export function useImageGeneration(): UseImageGenerationResult {
     selectedImage,
     selectedId,
     selectedModel,
+    isSlideMode,
     isGenerating,
     isLoading,
     error,
     generate,
     selectImage,
     selectModel,
+    setSlideMode,
     deleteImage,
     refresh,
   };

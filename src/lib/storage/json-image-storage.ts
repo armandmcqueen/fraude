@@ -44,6 +44,8 @@ export class JsonImageStorageProvider {
       .map((img) => ({
         id: img.id,
         prompt: img.prompt,
+        slidePrompt: img.slidePrompt,
+        isSlideMode: img.isSlideMode,
         createdAt: new Date(img.createdAt),
       }))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -77,7 +79,8 @@ export class JsonImageStorageProvider {
     id: string,
     prompt: string,
     base64Data: string,
-    mimeType: string
+    mimeType: string,
+    options?: { slidePrompt?: string; isSlideMode?: boolean }
   ): Promise<GeneratedImage> {
     await this.ensureDir();
 
@@ -94,6 +97,8 @@ export class JsonImageStorageProvider {
     const image: GeneratedImage = {
       id,
       prompt,
+      slidePrompt: options?.slidePrompt,
+      isSlideMode: options?.isSlideMode,
       imagePath: filename,
       mimeType,
       createdAt: new Date(),

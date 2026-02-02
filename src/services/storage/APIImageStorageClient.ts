@@ -47,12 +47,20 @@ export class APIImageStorageClient {
     id: string,
     prompt: string,
     base64Data: string,
-    mimeType: string
+    mimeType: string,
+    options?: { slidePrompt?: string; isSlideMode?: boolean }
   ): Promise<GeneratedImage> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, prompt, base64Data, mimeType }),
+      body: JSON.stringify({
+        id,
+        prompt,
+        base64Data,
+        mimeType,
+        slidePrompt: options?.slidePrompt,
+        isSlideMode: options?.isSlideMode,
+      }),
     });
 
     if (!response.ok) {

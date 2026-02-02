@@ -48,7 +48,7 @@ export function ImageDisplay({ image, isGenerating }: ImageDisplayProps) {
           />
         </svg>
         <p className="mt-4 text-gray-500 dark:text-gray-400">
-          Enter a prompt to generate an image
+          No image selected
         </p>
       </div>
     );
@@ -57,19 +57,12 @@ export function ImageDisplay({ image, isGenerating }: ImageDisplayProps) {
   const dataUrl = `data:${image.mimeType};base64,${image.data}`;
 
   return (
-    <div className="h-full flex flex-col bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
-      <div className="flex-1 flex items-center justify-center p-4 min-h-0 overflow-hidden">
-        <img
-          src={dataUrl}
-          alt={image.prompt}
-          className="max-w-full max-h-full object-contain rounded"
-        />
-      </div>
-      <div className="flex-shrink-0 p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-600 dark:text-gray-300 truncate" title={image.prompt}>
-          <span className="font-medium">Prompt:</span> {image.prompt}
-        </p>
-      </div>
+    <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden p-4">
+      <img
+        src={dataUrl}
+        alt={image.prompt}
+        className="max-w-full max-h-full object-contain rounded"
+      />
     </div>
   );
 }

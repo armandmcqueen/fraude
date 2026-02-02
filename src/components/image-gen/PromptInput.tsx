@@ -5,9 +5,10 @@ import { useState, useCallback, KeyboardEvent } from 'react';
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
   disabled?: boolean;
+  isSlideMode?: boolean;
 }
 
-export function PromptInput({ onSubmit, disabled }: PromptInputProps) {
+export function PromptInput({ onSubmit, disabled, isSlideMode }: PromptInputProps) {
   const [prompt, setPrompt] = useState('');
 
   const handleSubmit = useCallback(() => {
@@ -33,7 +34,9 @@ export function PromptInput({ onSubmit, disabled }: PromptInputProps) {
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Describe the image you want to generate..."
+        placeholder={isSlideMode
+          ? "Enter your slide content (AI will create the image prompt)..."
+          : "Describe the image you want to generate..."}
         disabled={disabled}
         rows={1}
         className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"

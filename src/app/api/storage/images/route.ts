@@ -11,7 +11,7 @@ export async function GET() {
 
 // POST /api/storage/images - Save a new image
 export async function POST(request: NextRequest) {
-  const { id, prompt, base64Data, mimeType } = await request.json();
+  const { id, prompt, base64Data, mimeType, slidePrompt, isSlideMode } = await request.json();
 
   if (!id || !prompt || !base64Data || !mimeType) {
     return NextResponse.json(
@@ -20,6 +20,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const image = await storage.saveImage(id, prompt, base64Data, mimeType);
+  const image = await storage.saveImage(id, prompt, base64Data, mimeType, {
+    slidePrompt,
+    isSlideMode,
+  });
   return NextResponse.json(image, { status: 201 });
 }
