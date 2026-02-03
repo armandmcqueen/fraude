@@ -6,6 +6,7 @@ import net from 'net';
 
 let serverProcess: ChildProcess | null = null;
 let testDataDir: string | null = null;
+let usingExistingServer = false;
 
 async function findAvailablePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -21,6 +22,17 @@ async function findAvailablePort(): Promise<number> {
     });
     server.on('error', reject);
   });
+}
+
+async function checkExistingServer(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${url}/api/storage/conversations`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 async function waitForServer(url: string, maxAttempts = 60): Promise<void> {
@@ -41,6 +53,18 @@ async function waitForServer(url: string, maxAttempts = 60): Promise<void> {
 }
 
 export async function setup() {
+  // Check if we should use an existing server (e.g., dev server on port 3000)
+  const existingServerUrl = process.env.USE_EXISTING_SERVER || 'http://localhost:3000';
+  if (await checkExistingServer(existingServerUrl)) {
+    console.log(`\n[Global Setup] Using existing server at ${existingServerUrl}`);
+    usingExistingServer = true;
+    process.env.TEST_SERVER_URL = existingServerUrl;
+    process.env.TEST_SERVER_PORT = '3000';
+    // Note: When using existing server, tests use the real data directory
+    process.env.TEST_DATA_DIR = './data';
+    return;
+  }
+
   const port = await findAvailablePort();
   testDataDir = mkdtempSync(join(tmpdir(), 'fraude-test-'));
 
@@ -99,6 +123,11 @@ export async function setup() {
 }
 
 export async function teardown() {
+  if (usingExistingServer) {
+    console.log('\n[Global Teardown] Using existing server, nothing to clean up');
+    return;
+  }
+
   if (serverProcess) {
     console.log('\n[Global Teardown] Stopping server...');
     serverProcess.kill('SIGTERM');

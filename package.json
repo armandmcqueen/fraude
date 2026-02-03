@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
+    "test:unit": "vitest --config vitest.unit.config.ts",
     "test:live": "vitest run tests/live-llm",
     "clean": "rm -rf data/conversations data/llm-calls"
   },

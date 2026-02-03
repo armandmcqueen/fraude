@@ -20,6 +20,7 @@ export const config = {
   agentSessionsDir: `${baseDataDir}/agent-sessions`,
   llmCallsDir: `${baseDataDir}/llm-calls`,
   imagesDir: `${baseDataDir}/images`,
+  slidegenEvalDir: `${baseDataDir}/slidegen-eval`,
 
   // UI
   maxMessageLength: 100000,

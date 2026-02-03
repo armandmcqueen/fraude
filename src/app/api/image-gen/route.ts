@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Modality } from '@google/genai';
 import Anthropic from '@anthropic-ai/sdk';
 import { config, availableImageModels } from '@/lib/config';
+import { JsonEvalConfigStorageProvider } from '@/lib/storage';
 
-const PROMPT_ENHANCER_SYSTEM = `You are an expert at creating prompts for image generation models. Your task is to take raw content (ideas, text, concepts) and transform them into effective prompts for generating text-centric presentation slides.
+// Fallback system prompt if eval config is not available
+const DEFAULT_PROMPT_ENHANCER_SYSTEM = `You are an expert at creating prompts for image generation models. Your task is to take raw content (ideas, text, concepts) and transform them into effective prompts for generating text-centric presentation slides.
 
 IMPORTANT: The generated image should BE the slide itself - the entire image is the slide. Do NOT describe a picture that contains a slide, or a slide on a screen, or a presentation setup. The image IS the slide content directly.
 
@@ -30,13 +32,32 @@ TEXT STYLING: If you want specific text styling, you must be explicit about WHIC
 
 Output ONLY the image generation prompt, nothing else. No explanations, no preamble.`;
 
+const evalConfigStorage = new JsonEvalConfigStorageProvider();
+
+/**
+ * Get the Prompt Enhancer system prompt from eval config storage.
+ * Falls back to the default hardcoded prompt if config is not available.
+ */
+async function getPromptEnhancerSystemPrompt(): Promise<string> {
+  try {
+    const evalConfig = await evalConfigStorage.getConfig();
+    if (evalConfig?.systemPrompt) {
+      return evalConfig.systemPrompt;
+    }
+  } catch {
+    // Fall through to default
+  }
+  return DEFAULT_PROMPT_ENHANCER_SYSTEM;
+}
+
 async function runPromptEnhancer(content: string): Promise<string> {
   const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+  const systemPrompt = await getPromptEnhancerSystemPrompt();
 
   const response = await anthropic.messages.create({
     model: config.defaultModel, // Claude Sonnet
     max_tokens: 500,
-    system: PROMPT_ENHANCER_SYSTEM,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
