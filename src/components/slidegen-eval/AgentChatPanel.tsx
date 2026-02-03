@@ -150,12 +150,12 @@ export function AgentChatPanel({
             <div className="fixed inset-0 bg-black/30 z-30" onClick={handleClose} />
           )}
           <div className={`fixed z-30 px-4 pointer-events-none ${
-            isExpanded ? 'inset-4 bottom-20' : `${isMinimized ? 'bottom-10' : 'bottom-20'} left-0 right-0`
+            isExpanded ? 'inset-4 bottom-14' : `${isMinimized ? 'bottom-10' : 'bottom-14'} left-0 right-0`
           }`}>
             <div className={`pointer-events-auto h-full ${isExpanded ? '' : 'max-w-4xl mx-auto'}`} ref={panelRef}>
               <div
-                className={`bg-white dark:bg-gray-900 rounded-xl shadow-2xl border flex flex-col transition-all duration-200 ${
-                  isExpanded ? 'h-full' : 'max-h-96'
+                className={`bg-white dark:bg-gray-900 rounded-t-xl shadow-2xl border border-b-0 flex flex-col transition-all duration-200 ${
+                  isExpanded ? 'h-full rounded-xl border-b' : 'max-h-96'
                 } ${
                   isPinned
                     ? 'border-blue-300 dark:border-blue-700 ring-2 ring-blue-200 dark:ring-blue-800'
@@ -259,7 +259,7 @@ export function AgentChatPanel({
               {turns.length > 0 && (
                 <button
                   onClick={handleTogglePanel}
-                  className="flex-shrink-0 p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                  className="flex-shrink-0 p-1.5 self-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
                   title={isPanelVisible ? 'Hide output' : 'Show output'}
                 >
                   {isPanelVisible ? (
@@ -284,7 +284,7 @@ export function AgentChatPanel({
                 <button
                   onClick={handleSubmit}
                   disabled={!input.trim() || isLoading}
-                  className="absolute right-1.5 bottom-1.5 p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="absolute right-2 bottom-2.5 p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isLoading ? (
                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

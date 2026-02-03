@@ -133,7 +133,7 @@ export function SlidegenEvalView() {
       )}
 
       {/* Main content - Test Cases (full width) */}
-      <div className={`flex-1 overflow-hidden ${isChatMinimized ? 'pb-0' : 'pb-20'}`}>
+      <div className={`flex-1 overflow-hidden ${isChatMinimized ? 'pb-0' : 'pb-14'}`}>
         <TestCaseList
           testCases={testCases}
           results={results}
