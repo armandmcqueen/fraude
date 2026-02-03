@@ -282,6 +282,100 @@ Auto-dismiss behavior:
 4. **UI control**: `keep_output_visible` lets agent prevent auto-dismiss for important messages
 5. **Server tools**: `web_search` is executed by Anthropic's servers, enabling real-time web access for research
 
+## Slidegen Eval Suite
+
+A tool for iterating on the Prompt Enhancer system prompt. The Prompt Enhancer takes raw slide content and transforms it into an image generation prompt, which is then fed to Gemini.
+
+### Architecture
+
+```
+┌─────────────┐                    ┌─────────────┐                    ┌─────────────┐
+│   UI        │ ──HTTP mutations─► │   Server    │ ──stores──────────►│ JSON Files  │
+│   (React)   │ ◄──SSE events───── │             │                    │             │
+└─────────────┘                    └─────────────┘                    └─────────────┘
+                                          ▲
+                                          │
+┌─────────────┐                           │
+│   Agent     │ ──tool calls─────────────►│
+│   Tools     │   (mutate server state)
+└─────────────┘
+```
+
+**Core Principle**: Server is single source of truth. All changes emit SSE events to UI. Both UI and agent mutations go through the server, which broadcasts changes via SSE.
+
+### Real-Time Sync via SSE
+
+When anything changes on the server, it emits an event:
+- `config_updated` - System prompt or model settings changed
+- `test_case_added` - New test case created
+- `test_case_updated` - Test case modified
+- `test_case_deleted` - Test case removed
+- `test_result_updated` - Test progress or completion
+
+The UI subscribes to these events and updates immediately.
+
+### Agent Awareness via Changelog
+
+The agent needs to know when humans made changes. Solution: **Changelog injected into agent context**.
+
+Every mutation (UI or agent) appends to the changelog. On each agent turn, recent changelog entries are injected into the system prompt so the agent can see what the human did and respond appropriately.
+
+### Model Configuration
+
+The eval suite supports configurable models:
+- **Enhancer Model**: Claude Haiku 4.5, Sonnet 4.5, or Opus 4.5 for prompt enhancement
+- **Image Model**: Gemini 2.5 Flash or Gemini 3 Pro for image generation
+
+Model settings are persisted with the config and included in version history.
+
+### Version History
+
+System prompt changes are tracked with snapshots:
+- Each save increments the version number
+- Snapshots store the full config state (system prompt, models, timestamp)
+- Users can view history and revert to previous versions
+- Test results track which config version produced them (shows "Outdated" badge when stale)
+
+### Agent Tools (10 total)
+
+**Read Tools**
+- `get_config` - Get current system prompt and model settings
+- `list_test_cases` - List all test cases with names and input text
+- `get_test_result` - Get result for a specific test case
+
+**Write Tools**
+- `update_system_prompt` - Replace the system prompt (optionally with model settings)
+- `create_test_case` - Create a new test case
+- `update_test_case` - Modify an existing test case
+- `delete_test_case` - Delete a test case
+
+**Execution Tools**
+- `run_test` - Run a single test case
+- `run_all_tests` - Run all test cases
+
+**UI Control**
+- `keep_output_visible` - Prevent agent panel auto-dismiss
+
+### Test Execution Pipeline
+
+```
+1. Create pending result → Emit test_result_updated (status: pending)
+2. Call Claude with system prompt + input → Emit (status: enhancing)
+3. Get enhanced prompt → Emit (status: generating_image, enhancedPrompt: "...")
+4. Call Gemini with enhanced prompt → Get generated image
+5. Save image → Emit (status: complete, generatedImageId: "...")
+```
+
+### UI Components
+
+- **SlidegenEvalView** - Main layout orchestrator
+- **PromptEditorModal** - Edit system prompt with version history
+- **TestCaseList** - Grid of test cases with responsive layout
+- **TestCaseRow** - Single test case with inline actions and result preview
+- **TestCaseEditModal** - Full editing experience for test case content
+- **ImageModal** - Full-screen image view with keyboard navigation
+- **AgentChatPanel** - Floating agent chat with tool visualization
+
 ## Future Considerations
 
 ### LLM Call Recording

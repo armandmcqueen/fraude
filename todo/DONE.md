@@ -2,6 +2,101 @@
 
 Historical record of completed tasks.
 
+## 2026-02-03 - Slidegen Eval Suite UI Polish
+
+### Model Configuration
+- Add `EnhancerModel` type (haiku/sonnet/opus) and `ImageGenModel` type (gemini-2.5-flash/gemini-3-pro)
+- Add model and imageModel fields to `PromptEnhancerConfig` and `ConfigVersionSnapshot`
+- Add model selector dropdowns in PromptEditorModal
+- Map model types to actual API model IDs in TestRunner
+- Backward compatibility for existing config data without model fields
+
+### Image Modal
+- Create `ImageModal` component for full-screen image viewing
+- Add keyboard navigation: Escape to close, arrow keys for prev/next
+- Add navigation buttons for prev/next when multiple images exist
+- Lift image modal state to TestCaseList for cross-row navigation
+- Add small expand icon in corner of image thumbnails
+
+### Delete Confirmation UX
+- Add "Delete?" label in delete confirmation state
+- Remove play button during delete confirmation to reduce clutter
+- Add fixed-width (w-14) to actions column to prevent width jumping
+
+### Left Column Redesign
+- Reduce input text preview to 2 lines with truncation (`line-clamp-2`)
+- Add title attribute for hover to see full text
+- Create `TestCaseEditModal` component for full editing experience
+- Move status badge to separate line from title
+- Center content vertically in input section
+
+### Responsive Grid Layout
+- Add responsive grid: 2 columns on wide screens when enhanced prompts hidden
+- Single column when enhanced prompts shown or on narrow screens
+- Use Tailwind's `grid-cols-1 xl:grid-cols-2` responsive classes
+
+### Header Button Improvements
+- Reorder header buttons (Show Enhanced Prompts toggle first)
+- Change toggle to labeled button with FileText icon ("Prompts")
+- Visual state change when toggle is active
+
+### Documentation
+- Add Slidegen Eval Suite section to DESIGN.md
+- Update IMPLEMENTATION.md with new files, types, and API routes
+
+## 2026-02-02 - Slidegen Eval Suite Implementation
+
+### Storage Layer (Milestone 1)
+- Create `types/slidegen-eval.ts` with all type definitions
+- Create `json-eval-config-storage.ts` for config persistence
+- Create `json-eval-config-history-storage.ts` for version history
+- Create `json-eval-testcase-storage.ts` for test case CRUD
+- Create `json-eval-result-storage.ts` for test results
+- Create `json-eval-changelog-storage.ts` for agent awareness
+- Implement soft delete (gravestone pattern) for test cases
+
+### SSE Infrastructure (Milestone 2)
+- Create `StateEventEmitter.ts` for server-side event broadcasting
+- Create `/api/slidegen-eval/state-stream/route.ts` SSE endpoint
+- Real-time event emission for all state changes
+
+### Config & Test Case APIs (Milestone 3)
+- Create `/api/slidegen-eval/config/route.ts` (GET/PUT)
+- Create `/api/slidegen-eval/config/history/route.ts` (GET version history)
+- Create `/api/slidegen-eval/test-cases/route.ts` (GET/POST)
+- Create `/api/slidegen-eval/test-cases/[id]/route.ts` (GET/PUT/DELETE)
+- Create `/api/slidegen-eval/test-results/route.ts` (GET all)
+- Changelog entries created for all mutations
+
+### Test Execution (Milestone 4)
+- Create `TestRunner.ts` service for Claude + Gemini pipeline
+- Create `/api/slidegen-eval/run-test/route.ts`
+- Create `/api/slidegen-eval/run-all-tests/route.ts`
+- Create `/api/images/[id]/route.ts` to serve generated images
+- Real-time progress updates via SSE events
+
+### Basic UI (Milestone 5)
+- Create `useSlidegenEvalState.ts` hook with SSE subscription
+- Create `SlidegenEvalView.tsx` main layout
+- Create `PromptEditorModal.tsx` with version history
+- Create `TestCaseList.tsx` and `TestCaseRow.tsx`
+- Add sidebar navigation link to Slidegen Eval
+
+### Agent Integration (Milestone 6)
+- Create `/api/slidegen-eval/agent/chat/route.ts` with tool use
+- Create agent tools: get_config, list_test_cases, get_test_result, update_system_prompt, create_test_case, update_test_case, delete_test_case, run_test, run_all_tests, keep_output_visible
+- Create `/api/slidegen-eval/agent/history/route.ts`
+- Create `/api/slidegen-eval/agent/clear/route.ts`
+- Create `useSlidegenEvalAgent.ts` hook
+- Create `AgentChatPanel.tsx` component
+- Changelog injection into agent context
+
+### Version History
+- Track all config changes with version snapshots
+- Display "Outdated" badge on test results from old config versions
+- View version history and revert to previous versions
+- Rename versions for easy identification
+
 ## 2026-01-30 - Web Search Bug Fix & Testing
 
 ### Bug Fix

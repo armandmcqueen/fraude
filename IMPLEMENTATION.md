@@ -15,6 +15,8 @@ fraude/
 │   │   │   ├── page.tsx          # List all personas
 │   │   │   ├── new/page.tsx      # Create new persona
 │   │   │   └── [id]/page.tsx     # Persona editor
+│   │   ├── slidegen-eval/        # Slidegen Eval Suite
+│   │   │   └── page.tsx          # Main eval page
 │   │   └── api/
 │   │       ├── chat/route.ts     # Streaming chat (Anthropic SDK)
 │   │       ├── complete/route.ts # Non-streaming completion (Anthropic SDK)
@@ -23,6 +25,20 @@ fraude/
 │   │       │   ├── chat/route.ts # Agentic loop with tool use (SSE)
 │   │       │   ├── clear/route.ts # Clear agent conversation
 │   │       │   └── history/route.ts # Get agent conversation history
+│   │       ├── slidegen-eval/    # Slidegen Eval Suite API
+│   │       │   ├── config/route.ts           # GET/PUT config
+│   │       │   ├── config/history/route.ts   # GET version history
+│   │       │   ├── test-cases/route.ts       # GET all, POST create
+│   │       │   ├── test-cases/[id]/route.ts  # GET/PUT/DELETE single
+│   │       │   ├── test-results/route.ts     # GET all results
+│   │       │   ├── run-test/route.ts         # POST - run single test
+│   │       │   ├── run-all-tests/route.ts    # POST - run all tests
+│   │       │   ├── state-stream/route.ts     # SSE endpoint for real-time sync
+│   │       │   └── agent/                    # Agent API
+│   │       │       ├── chat/route.ts         # Agentic loop (SSE streaming)
+│   │       │       ├── clear/route.ts        # Clear agent history
+│   │       │       └── history/route.ts      # Get agent history
+│   │       ├── images/[id]/route.ts  # Serve generated images
 │   │       └── storage/
 │   │           ├── conversations/  # CRUD for conversations
 │   │           ├── personas/       # CRUD for personas
@@ -34,6 +50,14 @@ fraude/
 │   │   ├── inspector/            # LLMInspector (dev panel for viewing LLM calls)
 │   │   ├── personas/             # PersonaEditorView, InstructionsEditor, TestResponsePanel, TestInputItem, AgentChatInput, AgentOutputPanel, PersonaSwitcher
 │   │   ├── sidebar/              # Sidebar, ConversationItem
+│   │   ├── slidegen-eval/        # Slidegen Eval Suite components
+│   │   │   ├── SlidegenEvalView.tsx    # Main layout orchestrator
+│   │   │   ├── PromptEditorModal.tsx   # System prompt editor with version history
+│   │   │   ├── TestCaseList.tsx        # Grid of test cases
+│   │   │   ├── TestCaseRow.tsx         # Single test case with actions
+│   │   │   ├── TestCaseEditModal.tsx   # Full-screen test case editing
+│   │   │   ├── ImageModal.tsx          # Full-screen image viewer with navigation
+│   │   │   └── AgentChatPanel.tsx      # Floating agent chat panel
 │   │   └── ui/                   # Reusable UI components (shadcn/ui)
 │   │       ├── switch.tsx        # Toggle switch (Radix UI)
 │   │       └── MarkdownContent.tsx # Markdown rendering with syntax highlighting
@@ -66,6 +90,10 @@ fraude/
 │   │       ├── config.ts         # ConversationConfig, CONFIG_PRESETS
 │   │       └── index.ts
 │   │
+│   ├── services/slidegen-eval/   # Slidegen Eval Suite services
+│   │   ├── TestRunner.ts         # Test execution (Claude + Gemini pipeline)
+│   │   └── StateEventEmitter.ts  # Server-side SSE event broadcasting
+│   │
 │   ├── lib/                      # Utilities and config
 │   │   ├── config.ts             # API keys, model IDs, defaults
 │   │   ├── export.ts             # Conversation export (markdown, PDF)
@@ -80,6 +108,11 @@ fraude/
 │   │       ├── json-persona-storage.ts  # JSON file storage for personas
 │   │       ├── json-resource-storage.ts # JSON file storage for resources
 │   │       ├── json-test-input-storage.ts # JSON file storage for test inputs
+│   │       ├── json-eval-config-storage.ts      # Slidegen eval config storage
+│   │       ├── json-eval-config-history-storage.ts # Config version history
+│   │       ├── json-eval-testcase-storage.ts    # Slidegen eval test cases
+│   │       ├── json-eval-result-storage.ts      # Slidegen eval test results
+│   │       └── json-eval-changelog-storage.ts   # Slidegen eval changelog
 │   │       └── index.ts
 │   │
 │   ├── hooks/                    # Thin React wrappers
@@ -91,10 +124,13 @@ fraude/
 │   │   ├── useDebounce.ts        # Debounce utility hook
 │   │   ├── usePersonaEditor.ts   # Persona editor state, auto-save, response generation
 │   │   ├── useAgentChat.ts       # Agent chat state, streaming, tool tracking
+│   │   ├── useSlidegenEvalState.ts  # Slidegen eval SSE state management
+│   │   ├── useSlidegenEvalAgent.ts  # Slidegen eval agent chat hook
 │   │   └── index.ts
 │   │
 │   └── types/                    # Shared TypeScript types
-│       └── index.ts
+│       ├── index.ts
+│       └── slidegen-eval.ts      # Slidegen eval type definitions
 │
 ├── data/
 │   ├── conversations/            # JSON conversation storage
@@ -102,17 +138,28 @@ fraude/
 │   ├── resources/                # JSON resource storage (for @mentions)
 │   ├── test-inputs/              # JSON test input storage (for persona editor)
 │   ├── agent-sessions/           # JSON agent chat session storage (per persona)
-│   └── llm-calls/                # LLM call recordings (per conversation)
+│   ├── llm-calls/                # LLM call recordings (per conversation)
+│   ├── slidegen-eval/            # Slidegen eval suite data
+│   │   ├── config.json           # PromptEnhancerConfig
+│   │   ├── config-history.json   # Version history snapshots
+│   │   ├── test-cases.json       # Array of EvalTestCase
+│   │   ├── test-results.json     # Array of EvalTestResult
+│   │   ├── changelog.json        # Array of ChangelogEntry
+│   │   └── agent-session.json    # Agent chat session
+│   └── images/                   # Generated images storage
 │
 ├── tests/
-│   └── live-llm/                 # Live LLM tests (real API, no UI)
-│       ├── global-setup.ts       # Vitest global setup (shared test server)
-│       ├── server-utils.ts       # Test server URL utilities
-│       ├── chat.test.ts          # Chat endpoint tests
-│       ├── multi-actor.test.ts   # Multi-persona execution tests
-│       ├── persona-agent.test.ts # Persona editor agent tests
-│       ├── summary.test.ts       # SummaryService unit tests
-│       └── summary-integration.test.ts # Summary integration tests
+│   ├── live-llm/                 # Live LLM tests (real API, no UI)
+│   │   ├── global-setup.ts       # Vitest global setup (shared test server)
+│   │   ├── server-utils.ts       # Test server URL utilities
+│   │   ├── chat.test.ts          # Chat endpoint tests
+│   │   ├── multi-actor.test.ts   # Multi-persona execution tests
+│   │   ├── persona-agent.test.ts # Persona editor agent tests
+│   │   ├── slidegen-eval-api.test.ts # Slidegen eval API tests
+│   │   ├── summary.test.ts       # SummaryService unit tests
+│   │   └── summary-integration.test.ts # Summary integration tests
+│   └── unit/slidegen-eval/       # Slidegen eval unit tests
+│       └── storage.test.ts       # Storage provider tests
 │
 ├── vitest.config.ts              # Vitest configuration
 └── ...config files
@@ -290,6 +337,59 @@ interface WebSearchResultTurn {
     errorCode: string;
   };
   createdAt: Date;
+}
+
+// Slidegen Eval Types
+type EnhancerModel = 'haiku' | 'sonnet' | 'opus';
+type ImageGenModel = 'gemini-2.5-flash' | 'gemini-3-pro';
+
+interface PromptEnhancerConfig {
+  id: string;              // 'default' for now
+  systemPrompt: string;
+  model: EnhancerModel;
+  imageModel: ImageGenModel;
+  version: number;         // Incremented on every change
+  versionName: string;     // User-friendly version name
+  updatedAt: Date;
+}
+
+interface ConfigVersionSnapshot {
+  version: number;
+  versionName: string;
+  systemPrompt: string;
+  model: EnhancerModel;
+  imageModel: ImageGenModel;
+  createdAt: Date;
+}
+
+interface EvalTestCase {
+  id: string;
+  name: string;
+  inputText: string;
+  deletedAt?: Date;        // Soft delete (gravestone pattern)
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface EvalTestResult {
+  id: string;
+  testCaseId: string;
+  configVersion: number;
+  enhancedPrompt: string;
+  generatedImageId?: string;
+  imageError?: string;
+  status: 'pending' | 'enhancing' | 'generating_image' | 'complete' | 'error';
+  runStartedAt: Date;
+  runCompletedAt?: Date;
+}
+
+interface ChangelogEntry {
+  id: string;
+  timestamp: Date;
+  source: 'ui' | 'agent';
+  action: string;
+  summary: string;
+  details?: Record<string, unknown>;
 }
 ```
 
