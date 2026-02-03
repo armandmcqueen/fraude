@@ -84,7 +84,9 @@ export function TestCaseRow({
           </span>
         );
       case 'complete': {
-        const isOutdated = currentConfigVersion !== undefined && result.configVersion !== currentConfigVersion;
+        const isOutdatedConfig = currentConfigVersion !== undefined && result.configVersion !== currentConfigVersion;
+        const isOutdatedTestCase = new Date(testCase.updatedAt).getTime() > new Date(result.runStartedAt).getTime();
+        const isOutdated = isOutdatedConfig || isOutdatedTestCase;
         if (isOutdated) {
           return (
             <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
