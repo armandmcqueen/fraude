@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Bot, ChevronDown, ChevronUp } from 'lucide-react';
 import { SlidegenEvalAgentTurn } from '@/types/slidegen-eval';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 
@@ -9,6 +10,8 @@ interface AgentChatPanelProps {
   isLoading: boolean;
   error: string | null;
   outputImportant: boolean;
+  isMinimized: boolean;
+  onMinimizedChange: (minimized: boolean) => void;
   onSendMessage: (message: string) => void;
   onClear: () => void;
 }
@@ -18,6 +21,8 @@ export function AgentChatPanel({
   isLoading,
   error,
   outputImportant,
+  isMinimized,
+  onMinimizedChange,
   onSendMessage,
   onClear,
 }: AgentChatPanelProps) {
@@ -145,7 +150,7 @@ export function AgentChatPanel({
             <div className="fixed inset-0 bg-black/30 z-30" onClick={handleClose} />
           )}
           <div className={`fixed z-30 px-4 pointer-events-none ${
-            isExpanded ? 'inset-4 bottom-20' : 'bottom-20 left-0 right-0'
+            isExpanded ? 'inset-4 bottom-20' : `${isMinimized ? 'bottom-10' : 'bottom-20'} left-0 right-0`
           }`}>
             <div className={`pointer-events-auto h-full ${isExpanded ? '' : 'max-w-4xl mx-auto'}`} ref={panelRef}>
               <div
@@ -243,57 +248,82 @@ export function AgentChatPanel({
         </>
       )}
 
-      {/* Input Area */}
-      <div
-        className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4 z-40"
-        data-agent-input
-      >
-        <div className="max-w-4xl mx-auto flex items-end gap-3">
-          {turns.length > 0 && (
-            <button
-              onClick={handleTogglePanel}
-              className="flex-shrink-0 p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {isPanelVisible ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                )}
-              </svg>
-            </button>
-          )}
-
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask the AI to help iterate on the prompt..."
-              disabled={isLoading}
-              rows={1}
-              className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
-            />
-            <button
-              onClick={handleSubmit}
-              disabled={!input.trim() || isLoading}
-              className="absolute right-2 bottom-2 p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+      {/* Input Area - Full bar */}
+      {!isMinimized && (
+        <div
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-40"
+          data-agent-input
+        >
+          <div className="max-w-4xl mx-auto px-4 pt-2">
+            <div className="flex items-end gap-2">
+              {turns.length > 0 && (
+                <button
+                  onClick={handleTogglePanel}
+                  className="flex-shrink-0 p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                  title={isPanelVisible ? 'Hide output' : 'Show output'}
+                >
+                  {isPanelVisible ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronUp className="w-4 h-4" />
+                  )}
+                </button>
               )}
-            </button>
+
+              <div className="flex-1 relative">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask the AI to help iterate on the prompt..."
+                  disabled={isLoading}
+                  rows={1}
+                  className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
+                />
+                <button
+                  onClick={handleSubmit}
+                  disabled={!input.trim() || isLoading}
+                  className="absolute right-1.5 bottom-1.5 p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isLoading ? (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
+
+          {/* Minimize button - centered at bottom, z-10 to be above input */}
+          <button
+            onClick={() => onMinimizedChange(true)}
+            className="relative z-10 mx-auto flex px-5 -mt-2 text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 transition-colors cursor-pointer"
+            title="Minimize"
+          >
+            <ChevronDown className="w-5 h-5" />
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* Minimized Tab */}
+      {isMinimized && (
+        <button
+          onClick={() => onMinimizedChange(false)}
+          className={`fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-2.5 py-0.5 bg-gray-100 dark:bg-gray-800 border border-b-0 border-gray-200 dark:border-gray-700 rounded-t hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
+            isLoading ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'
+          }`}
+          title="Open AI assistant"
+        >
+          <Bot className={`w-3.5 h-3.5 ${isLoading ? 'animate-pulse' : ''}`} />
+        </button>
+      )}
     </>
   );
 }

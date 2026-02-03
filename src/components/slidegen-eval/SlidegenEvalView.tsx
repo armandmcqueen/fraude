@@ -12,6 +12,7 @@ export function SlidegenEvalView() {
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [showEnhancedPrompts, setShowEnhancedPrompts] = useState(false);
   const [isCreatingTest, setIsCreatingTest] = useState(false);
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
 
   const {
     config,
@@ -132,7 +133,7 @@ export function SlidegenEvalView() {
       )}
 
       {/* Main content - Test Cases (full width) */}
-      <div className="flex-1 overflow-hidden pb-20">
+      <div className={`flex-1 overflow-hidden ${isChatMinimized ? 'pb-0' : 'pb-20'}`}>
         <TestCaseList
           testCases={testCases}
           results={results}
@@ -154,6 +155,8 @@ export function SlidegenEvalView() {
         isLoading={isAgentLoading}
         error={agentError}
         outputImportant={agentOutputImportant}
+        isMinimized={isChatMinimized}
+        onMinimizedChange={setIsChatMinimized}
         onSendMessage={sendAgentMessage}
         onClear={clearAgentConversation}
       />
