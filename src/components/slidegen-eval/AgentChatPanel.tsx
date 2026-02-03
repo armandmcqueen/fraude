@@ -254,7 +254,7 @@ export function AgentChatPanel({
           className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-40"
           data-agent-input
         >
-          <div className="max-w-4xl mx-auto px-4 pt-2">
+          <div className="max-w-4xl mx-auto px-4 pt-3">
             <div className="flex items-end gap-2">
               {turns.length > 0 && (
                 <button
