@@ -4,6 +4,21 @@ Historical record of completed tasks.
 
 ## 2026-02-03 - Slidegen Eval Suite UI Polish
 
+### Agent Chat Panel
+- Add minimize/maximize functionality with subtle tab at bottom of screen
+- Lift minimized state to parent component (SlidegenEvalView)
+- Show Bot icon in minimized tab, ChevronDown for minimize button
+- Conditional padding on main content area when chat is minimized/expanded
+
+### Test Case Visual Improvements
+- Change test case card background from white to gray for better visual distinction
+- Cards now clearly stand out as separate entities against white page background
+
+### Outdated Indicator Enhancement
+- Add outdated detection when test case input is updated (not just config changes)
+- Compare `testCase.updatedAt` with `result.runStartedAt` to detect stale results
+- Both config version changes and test case edits now trigger "Outdated" badge
+
 ### Model Configuration
 - Add `EnhancerModel` type (haiku/sonnet/opus) and `ImageGenModel` type (gemini-2.5-flash/gemini-3-pro)
 - Add model and imageModel fields to `PromptEnhancerConfig` and `ConfigVersionSnapshot`

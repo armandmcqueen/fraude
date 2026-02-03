@@ -334,7 +334,7 @@ System prompt changes are tracked with snapshots:
 - Each save increments the version number
 - Snapshots store the full config state (system prompt, models, timestamp)
 - Users can view history and revert to previous versions
-- Test results track which config version produced them (shows "Outdated" badge when stale)
+- Test results show "Outdated" badge when stale (config version changed OR test case was edited since last run)
 
 ### Agent Tools (10 total)
 
