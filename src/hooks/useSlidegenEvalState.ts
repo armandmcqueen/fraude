@@ -3,12 +3,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   PromptEnhancerConfig,
+  ConfigVersionSnapshot,
   EvalTestCase,
   EvalTestResult,
+  EnhancerModel,
+  ImageGenModel,
 } from '@/types/slidegen-eval';
 
 interface SlidegenEvalState {
   config: PromptEnhancerConfig | null;
+  versionHistory: ConfigVersionSnapshot[];
   testCases: EvalTestCase[];
   results: Map<string, EvalTestResult>; // Keyed by testCaseId for quick lookup
   isConnected: boolean;
@@ -16,8 +20,12 @@ interface SlidegenEvalState {
 }
 
 interface UseSlidegenEvalStateReturn extends SlidegenEvalState {
-  // Actions
-  updateConfig: (systemPrompt: string) => Promise<void>;
+  // Config actions
+  updateConfig: (systemPrompt: string, model?: EnhancerModel, imageModel?: ImageGenModel) => Promise<void>;
+  loadVersionHistory: () => Promise<void>;
+  revertToVersion: (version: number) => Promise<void>;
+  renameVersion: (version: number, name: string) => Promise<void>;
+  // Test case actions
   createTestCase: (name: string, inputText: string) => Promise<EvalTestCase>;
   updateTestCase: (id: string, updates: { name?: string; inputText?: string }) => Promise<void>;
   deleteTestCase: (id: string) => Promise<void>;
@@ -40,6 +48,7 @@ interface UseSlidegenEvalStateReturn extends SlidegenEvalState {
  */
 export function useSlidegenEvalState(): UseSlidegenEvalStateReturn {
   const [config, setConfig] = useState<PromptEnhancerConfig | null>(null);
+  const [versionHistory, setVersionHistory] = useState<ConfigVersionSnapshot[]>([]);
   const [testCases, setTestCases] = useState<EvalTestCase[]>([]);
   const [results, setResults] = useState<Map<string, EvalTestResult>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
@@ -195,21 +204,94 @@ export function useSlidegenEvalState(): UseSlidegenEvalStateReturn {
     };
   }, [connect]);
 
-  // Actions
-  const updateConfig = useCallback(async (systemPrompt: string) => {
+  // Parse version snapshot dates
+  const parseVersionSnapshot = (data: ConfigVersionSnapshot): ConfigVersionSnapshot => ({
+    ...data,
+    savedAt: new Date(data.savedAt),
+  });
+
+  const loadVersionHistory = useCallback(async () => {
+    try {
+      const response = await fetch('/api/slidegen-eval/config/history');
+      if (!response.ok) {
+        throw new Error('Failed to load version history');
+      }
+      const data = await response.json();
+      setVersionHistory(data.versions.map(parseVersionSnapshot));
+    } catch (e) {
+      console.error('Failed to load version history:', e);
+    }
+  }, []);
+
+  // Config actions
+  const updateConfig = useCallback(async (systemPrompt: string, model?: EnhancerModel, imageModel?: ImageGenModel) => {
     setIsSavingConfig(true);
     try {
       const response = await fetch('/api/slidegen-eval/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ systemPrompt }),
+        body: JSON.stringify({ systemPrompt, model, imageModel }),
       });
       if (!response.ok) {
         throw new Error('Failed to update config');
       }
-      // State will be updated via SSE
+      // Update config directly from response for immediate UI update
+      // (SSE will also update, but this ensures no delay)
+      const data = await response.json();
+      setConfig(parseConfig(data.config));
+      // Reload version history since we added a new version
+      await loadVersionHistory();
     } finally {
       setIsSavingConfig(false);
+    }
+  }, [loadVersionHistory]);
+
+  const revertToVersion = useCallback(async (version: number) => {
+    setIsSavingConfig(true);
+    try {
+      const response = await fetch('/api/slidegen-eval/config/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to revert to version');
+      }
+      // Update config directly from response for immediate UI update
+      // (SSE will also update, but this ensures no delay)
+      const data = await response.json();
+      setConfig(parseConfig(data.config));
+      // Reload version history
+      await loadVersionHistory();
+    } finally {
+      setIsSavingConfig(false);
+    }
+  }, [loadVersionHistory]);
+
+  const renameVersion = useCallback(async (versionNum: number, name: string) => {
+    try {
+      const response = await fetch('/api/slidegen-eval/config/history', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version: versionNum, name }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to rename version');
+      }
+      // Update local history state
+      setVersionHistory((prev) =>
+        prev.map((v) => (v.version === versionNum ? { ...v, versionName: name } : v))
+      );
+      // Also update config state if renaming the current version
+      setConfig((prev) => {
+        if (prev && prev.version === versionNum) {
+          return { ...prev, versionName: name };
+        }
+        return prev;
+      });
+    } catch (e) {
+      console.error('Failed to rename version:', e);
+      throw e;
     }
   }, []);
 
@@ -285,11 +367,15 @@ export function useSlidegenEvalState(): UseSlidegenEvalStateReturn {
 
   return {
     config,
+    versionHistory,
     testCases,
     results,
     isConnected,
     error,
     updateConfig,
+    loadVersionHistory,
+    revertToVersion,
+    renameVersion,
     createTestCase,
     updateTestCase,
     deleteTestCase,

@@ -34,6 +34,12 @@ export class JsonEvalConfigStorageProvider implements EvalConfigStorageProvider 
 
       return {
         ...data,
+        // Backward compatibility: add versionName if missing
+        versionName: data.versionName || `v${data.version}`,
+        // Backward compatibility: add model if missing (default to 'sonnet')
+        model: data.model || 'sonnet',
+        // Backward compatibility: add imageModel if missing (default to 'gemini-3-pro')
+        imageModel: data.imageModel || 'gemini-3-pro',
         updatedAt: new Date(data.updatedAt),
       };
     } catch {

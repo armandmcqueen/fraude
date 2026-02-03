@@ -142,7 +142,17 @@ class StateEventEmitterImpl {
 }
 
 // Export singleton instance
-export const stateEventEmitter = new StateEventEmitterImpl();
+// Use global object to persist across HMR in development
+const globalForEmitter = globalThis as unknown as {
+  stateEventEmitter: StateEventEmitterImpl | undefined;
+};
+
+export const stateEventEmitter =
+  globalForEmitter.stateEventEmitter ?? new StateEventEmitterImpl();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForEmitter.stateEventEmitter = stateEventEmitter;
+}
 
 // Also export the class for testing with isolated instances
 export { StateEventEmitterImpl };

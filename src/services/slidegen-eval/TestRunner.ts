@@ -7,7 +7,7 @@ import {
   JsonEvalResultStorageProvider,
   JsonImageStorageProvider,
 } from '@/lib/storage';
-import { EvalTestResult, EvalTestCase, PromptEnhancerConfig } from '@/types/slidegen-eval';
+import { EvalTestResult, EvalTestCase, PromptEnhancerConfig, EnhancerModel, ImageGenModel } from '@/types/slidegen-eval';
 import { stateEventEmitter } from './StateEventEmitter';
 import { createChangelogEntry, generateId } from '@/app/api/slidegen-eval/helpers';
 
@@ -17,6 +17,19 @@ const DEFAULT_SYSTEM_PROMPT = `You are an expert at creating prompts for image g
 The slides should be TEXT-CENTRIC. The text on the slide should communicate the core idea.
 
 Output ONLY the image generation prompt, nothing else.`;
+
+// Map EnhancerModel to actual Anthropic model IDs (Claude 4.5 versions)
+const ENHANCER_MODEL_MAP: Record<EnhancerModel, string> = {
+  haiku: 'claude-haiku-4-5-20251001',
+  sonnet: 'claude-sonnet-4-5-20250929',
+  opus: 'claude-opus-4-5-20251101',
+};
+
+// Map ImageGenModel to actual Gemini model IDs
+const IMAGE_MODEL_MAP: Record<ImageGenModel, string> = {
+  'gemini-2.5-flash': 'gemini-2.5-flash-image',
+  'gemini-3-pro': 'gemini-3-pro-image-preview',
+};
 
 export interface TestRunnerDeps {
   configStorage?: JsonEvalConfigStorageProvider;
@@ -81,6 +94,8 @@ export class TestRunner {
     // Get config
     const evalConfig = await this.configStorage.getConfig();
     const systemPrompt = evalConfig?.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+    const enhancerModel = evalConfig?.model || 'sonnet';
+    const imageGenModel = evalConfig?.imageModel || 'gemini-3-pro';
     const configVersion = evalConfig?.version || 0;
 
     // Create initial result
@@ -111,7 +126,7 @@ export class TestRunner {
       await this.resultStorage.saveResult(result);
       this.emitResultUpdate(result);
 
-      const enhancedPrompt = await this.runPromptEnhancer(systemPrompt, testCase.inputText);
+      const enhancedPrompt = await this.runPromptEnhancer(systemPrompt, testCase.inputText, enhancerModel);
       result.enhancedPrompt = enhancedPrompt;
 
       // Step 2: Generate image with Gemini
@@ -119,7 +134,7 @@ export class TestRunner {
       await this.resultStorage.saveResult(result);
       this.emitResultUpdate(result);
 
-      const { imageId, error } = await this.generateImage(enhancedPrompt, testCase);
+      const { imageId, error } = await this.generateImage(enhancedPrompt, testCase, imageGenModel);
 
       if (error) {
         result.imageError = error;
@@ -163,17 +178,15 @@ export class TestRunner {
   }
 
   /**
-   * Run all test cases.
+   * Run all test cases in parallel.
    */
   async runAllTests(source: 'ui' | 'agent' = 'ui'): Promise<EvalTestResult[]> {
     const testCases = await this.testCaseStorage.listTestCases();
-    const results: EvalTestResult[] = [];
 
-    // Run tests sequentially to avoid overwhelming the APIs
-    for (const tc of testCases) {
-      const result = await this.runTest(tc.id, source);
-      results.push(result);
-    }
+    // Run all tests in parallel
+    const results = await Promise.all(
+      testCases.map((tc) => this.runTest(tc.id, source))
+    );
 
     return results;
   }
@@ -181,13 +194,14 @@ export class TestRunner {
   /**
    * Run the prompt enhancer (Claude) to transform input into image generation prompt.
    */
-  private async runPromptEnhancer(systemPrompt: string, inputText: string): Promise<string> {
+  private async runPromptEnhancer(systemPrompt: string, inputText: string, model: EnhancerModel): Promise<string> {
     if (!this.anthropic) {
       throw new Error('Anthropic API key not configured');
     }
 
+    const modelId = ENHANCER_MODEL_MAP[model];
     const response = await this.anthropic.messages.create({
-      model: config.defaultModel,
+      model: modelId,
       max_tokens: 500,
       system: systemPrompt,
       messages: [
@@ -211,15 +225,17 @@ export class TestRunner {
    */
   private async generateImage(
     prompt: string,
-    testCase: EvalTestCase
+    testCase: EvalTestCase,
+    imageModel: ImageGenModel
   ): Promise<{ imageId?: string; error?: string }> {
     if (!this.gemini) {
       return { error: 'Gemini API key not configured' };
     }
 
     try {
+      const modelId = IMAGE_MODEL_MAP[imageModel];
       const response = await this.gemini.models.generateContent({
-        model: config.defaultImageModel,
+        model: modelId,
         contents: prompt,
         config: {
           responseModalities: [Modality.TEXT, Modality.IMAGE],

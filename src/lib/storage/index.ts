@@ -8,6 +8,7 @@ export { JsonImageStorageProvider } from './json-image-storage';
 
 // Slidegen Eval storage providers
 export { JsonEvalConfigStorageProvider } from './json-eval-config-storage';
+export { JsonEvalConfigHistoryStorageProvider } from './json-eval-config-history-storage';
 export { JsonEvalTestCaseStorageProvider } from './json-eval-testcase-storage';
 export { JsonEvalResultStorageProvider } from './json-eval-result-storage';
 export { JsonEvalChangelogStorageProvider } from './json-eval-changelog-storage';
@@ -16,6 +17,7 @@ export { JsonEvalAgentSessionStorageProvider } from './json-eval-agent-session-s
 export type { StorageProvider, PersonaStorageProvider, ResourceStorageProvider, TestInputStorageProvider, SettingsStorageProvider, AgentSessionStorageProvider } from './types';
 export type {
   EvalConfigStorageProvider,
+  EvalConfigHistoryStorageProvider,
   EvalTestCaseStorageProvider,
   EvalResultStorageProvider,
   EvalChangelogStorageProvider,

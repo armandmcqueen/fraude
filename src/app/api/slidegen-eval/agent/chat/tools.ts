@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import {
   JsonEvalConfigStorageProvider,
+  JsonEvalConfigHistoryStorageProvider,
   JsonEvalTestCaseStorageProvider,
   JsonEvalResultStorageProvider,
 } from '@/lib/storage';
@@ -9,6 +10,7 @@ import { testRunner } from '@/services/slidegen-eval/TestRunner';
 import { createChangelogEntry } from '../../helpers';
 
 const configStorage = new JsonEvalConfigStorageProvider();
+const historyStorage = new JsonEvalConfigHistoryStorageProvider();
 const testCaseStorage = new JsonEvalTestCaseStorageProvider();
 const resultStorage = new JsonEvalResultStorageProvider();
 
@@ -41,13 +43,23 @@ export const customTools: Anthropic.Messages.Tool[] = [
   },
   {
     name: 'update_system_prompt',
-    description: 'Update the Prompt Enhancer system prompt. This replaces the entire system prompt.',
+    description: 'Update the Prompt Enhancer system prompt and/or models. This replaces the entire system prompt.',
     input_schema: {
       type: 'object' as const,
       properties: {
         systemPrompt: {
           type: 'string',
           description: 'The new system prompt for the Prompt Enhancer',
+        },
+        model: {
+          type: 'string',
+          enum: ['haiku', 'sonnet', 'opus'],
+          description: 'The Claude model to use for enhancement (haiku, sonnet, or opus). All are 4.5 versions.',
+        },
+        imageModel: {
+          type: 'string',
+          enum: ['gemini-2.5-flash', 'gemini-3-pro'],
+          description: 'The Gemini model to use for image generation.',
         },
       },
       required: ['systemPrompt'],
@@ -154,6 +166,29 @@ export const customTools: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: 'list_deleted_test_cases',
+    description: 'List all deleted (gravestoned) test cases. These can be restored using restore_test_case.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'restore_test_case',
+    description: 'Restore a previously deleted test case. Use list_deleted_test_cases to find deleted test case IDs.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: {
+          type: 'string',
+          description: 'The ID of the deleted test case to restore',
+        },
+      },
+      required: ['id'],
+    },
+  },
+  {
     name: 'keep_output_visible',
     description: 'Call this tool when your response contains important information the user needs to read, such as a question you are asking, an explanation they requested, or anything where the text output matters. By default, the chat panel auto-hides after tool operations. Calling this keeps it visible until the user dismisses it.',
     input_schema: {
@@ -194,6 +229,8 @@ export async function executeAgentTool(
         return {
           output: JSON.stringify({
             systemPrompt: config.systemPrompt,
+            model: config.model,
+            imageModel: config.imageModel,
             version: config.version,
             updatedAt: config.updatedAt,
           }, null, 2),
@@ -202,16 +239,32 @@ export async function executeAgentTool(
 
       case 'update_system_prompt': {
         const systemPrompt = input.systemPrompt as string;
+        const model = (input.model as 'haiku' | 'sonnet' | 'opus') || undefined;
+        const imageModel = (input.imageModel as 'gemini-2.5-flash' | 'gemini-3-pro') || undefined;
         const existingConfig = await configStorage.getConfig();
 
+        const newVersion = (existingConfig?.version || 0) + 1;
+        const now = new Date();
         const config = {
           id: existingConfig?.id || 'default',
           systemPrompt,
-          version: (existingConfig?.version || 0) + 1,
-          updatedAt: new Date(),
+          model: model || existingConfig?.model || 'sonnet',
+          imageModel: imageModel || existingConfig?.imageModel || 'gemini-3-pro',
+          version: newVersion,
+          versionName: `v${newVersion}`,
+          updatedAt: now,
         };
 
+        // Save to both config (current) and history (all versions)
         await configStorage.saveConfig(config);
+        await historyStorage.saveVersion({
+          version: config.version,
+          versionName: config.versionName,
+          systemPrompt: config.systemPrompt,
+          model: config.model,
+          imageModel: config.imageModel,
+          savedAt: now,
+        });
 
         // Emit SSE event
         stateEventEmitter.emit({
@@ -223,11 +276,11 @@ export async function executeAgentTool(
         await createChangelogEntry(
           'agent',
           'config_updated',
-          `System prompt updated (version ${config.version})`,
-          { version: config.version }
+          `System prompt updated (${config.versionName})`,
+          { version: config.version, versionName: config.versionName }
         );
 
-        return { output: `Successfully updated system prompt (version ${config.version})` };
+        return { output: `Successfully updated system prompt (${config.versionName})` };
       }
 
       case 'list_test_cases': {
@@ -410,6 +463,57 @@ export async function executeAgentTool(
           const message = error instanceof Error ? error.message : 'Unknown error';
           return { output: `Error running tests: ${message}`, isError: true };
         }
+      }
+
+      case 'list_deleted_test_cases': {
+        const deletedTestCases = await testCaseStorage.listDeletedTestCases();
+        if (deletedTestCases.length === 0) {
+          return { output: 'No deleted test cases found' };
+        }
+
+        return {
+          output: JSON.stringify({
+            deletedTestCases: deletedTestCases.map(tc => ({
+              id: tc.id,
+              name: tc.name,
+              inputTextPreview: tc.inputTextPreview,
+            })),
+          }, null, 2),
+        };
+      }
+
+      case 'restore_test_case': {
+        const id = input.id as string;
+        const testCase = await testCaseStorage.getTestCase(id);
+
+        if (!testCase) {
+          return { output: `Test case "${id}" not found`, isError: true };
+        }
+
+        if (!testCase.deletedAt) {
+          return { output: `Test case "${testCase.name}" is not deleted`, isError: true };
+        }
+
+        await testCaseStorage.restoreTestCase(id);
+
+        // Emit SSE event
+        const restoredTestCase = await testCaseStorage.getTestCase(id);
+        if (restoredTestCase) {
+          stateEventEmitter.emit({
+            type: 'test_case_added',
+            testCase: restoredTestCase,
+          });
+        }
+
+        // Create changelog entry
+        await createChangelogEntry(
+          'agent',
+          'test_case_updated',
+          `Test case "${testCase.name}" restored`,
+          { testCaseId: id }
+        );
+
+        return { output: `Successfully restored test case "${testCase.name}"` };
       }
 
       case 'keep_output_visible': {

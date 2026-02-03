@@ -6,7 +6,7 @@ import { getRequestSource } from '../helpers';
  * POST /api/slidegen-eval/run-all-tests
  * Runs all test cases through the Prompt Enhancer → Image Generator pipeline.
  *
- * Tests run sequentially to avoid overwhelming the APIs.
+ * Tests run in parallel for faster execution.
  * Progress is emitted via SSE (state-stream) for each test.
  * This endpoint returns when all tests complete.
  */

@@ -1,20 +1,28 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, PlayCircle, Plus, Loader2, FileText, ScrollText } from 'lucide-react';
 import { useSlidegenEvalState, useSlidegenEvalAgent } from '@/hooks';
-import { PromptEditor } from './PromptEditor';
+import { PromptEditorModal } from './PromptEditorModal';
 import { TestCaseList } from './TestCaseList';
 import { AgentChatPanel } from './AgentChatPanel';
 
 export function SlidegenEvalView() {
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+  const [showEnhancedPrompts, setShowEnhancedPrompts] = useState(false);
+  const [isCreatingTest, setIsCreatingTest] = useState(false);
+
   const {
     config,
+    versionHistory,
     testCases,
     results,
-    isConnected,
     error,
     updateConfig,
+    loadVersionHistory,
+    revertToVersion,
+    renameVersion,
     createTestCase,
     updateTestCase,
     deleteTestCase,
@@ -49,9 +57,7 @@ export function SlidegenEvalView() {
             href="/"
             className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <ArrowLeft className="w-4 h-4" />
             Chat
           </Link>
           <span className="text-gray-400 dark:text-gray-500">/</span>
@@ -60,19 +66,61 @@ export function SlidegenEvalView() {
           </h1>
         </div>
 
-        {/* Connection status */}
-        <div className="flex items-center gap-2 text-sm">
-          {isConnected ? (
-            <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              Connected
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-              <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-              Connecting...
-            </span>
-          )}
+        <div className="flex items-center gap-1">
+          {/* Show Enhanced Prompts toggle */}
+          <button
+            onClick={() => setShowEnhancedPrompts(!showEnhancedPrompts)}
+            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors cursor-pointer text-sm ${
+              showEnhancedPrompts
+                ? 'text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-700'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+            title={showEnhancedPrompts ? 'Hide enhanced prompts' : 'Show enhanced prompts'}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Prompts</span>
+          </button>
+
+          {/* Add Test button */}
+          <button
+            onClick={() => setIsCreatingTest(true)}
+            disabled={isCreatingTest}
+            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Add test case"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+
+          {/* Run All button */}
+          <button
+            onClick={runAllTests}
+            disabled={isRunningAllTests || testCases.length === 0}
+            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            title={isRunningAllTests ? 'Running all tests...' : 'Run all tests'}
+          >
+            {isRunningAllTests ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <PlayCircle className="w-5 h-5" />
+            )}
+          </button>
+
+          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-2" />
+
+          {/* Edit System Prompt button */}
+          <button
+            onClick={() => setIsPromptModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
+          >
+            <ScrollText className="w-4 h-4" />
+            <span>System Prompt</span>
+            {config && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                ({config.versionName})
+              </span>
+            )}
+          </button>
+
         </div>
       </header>
 
@@ -83,31 +131,21 @@ export function SlidegenEvalView() {
         </div>
       )}
 
-      {/* Main content - split panels */}
-      <div className="flex flex-1 overflow-hidden pb-20">
-        {/* Left panel - System Prompt Editor */}
-        <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-          <PromptEditor
-            systemPrompt={config?.systemPrompt ?? null}
-            onSave={updateConfig}
-            isSaving={isSavingConfig}
-          />
-        </div>
-
-        {/* Right panel - Test Cases */}
-        <div className="w-1/2 flex flex-col">
-          <TestCaseList
-            testCases={testCases}
-            results={results}
-            isRunningTest={isRunningTest}
-            isRunningAllTests={isRunningAllTests}
-            onCreateTestCase={createTestCase}
-            onUpdateTestCase={updateTestCase}
-            onDeleteTestCase={deleteTestCase}
-            onRunTest={runTest}
-            onRunAllTests={runAllTests}
-          />
-        </div>
+      {/* Main content - Test Cases (full width) */}
+      <div className="flex-1 overflow-hidden pb-20">
+        <TestCaseList
+          testCases={testCases}
+          results={results}
+          currentConfigVersion={config?.version}
+          isRunningTest={isRunningTest}
+          showEnhancedPrompts={showEnhancedPrompts}
+          isCreating={isCreatingTest}
+          onSetIsCreating={setIsCreatingTest}
+          onCreateTestCase={createTestCase}
+          onUpdateTestCase={updateTestCase}
+          onDeleteTestCase={deleteTestCase}
+          onRunTest={runTest}
+        />
       </div>
 
       {/* Agent Chat Panel */}
@@ -118,6 +156,23 @@ export function SlidegenEvalView() {
         outputImportant={agentOutputImportant}
         onSendMessage={sendAgentMessage}
         onClear={clearAgentConversation}
+      />
+
+      {/* System Prompt Modal */}
+      <PromptEditorModal
+        isOpen={isPromptModalOpen}
+        onClose={() => setIsPromptModalOpen(false)}
+        systemPrompt={config?.systemPrompt ?? null}
+        model={config?.model}
+        imageModel={config?.imageModel}
+        version={config?.version}
+        versionName={config?.versionName}
+        versionHistory={versionHistory}
+        onSave={updateConfig}
+        onLoadHistory={loadVersionHistory}
+        onRevert={revertToVersion}
+        onRenameVersion={renameVersion}
+        isSaving={isSavingConfig}
       />
     </div>
   );

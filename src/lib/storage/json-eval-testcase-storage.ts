@@ -38,6 +38,7 @@ export class JsonEvalTestCaseStorageProvider implements EvalTestCaseStorageProvi
         ...tc,
         createdAt: new Date(tc.createdAt),
         updatedAt: new Date(tc.updatedAt),
+        deletedAt: tc.deletedAt ? new Date(tc.deletedAt) : undefined,
       }));
     } catch {
       return [];
@@ -59,6 +60,20 @@ export class JsonEvalTestCaseStorageProvider implements EvalTestCaseStorageProvi
     const testCases = await this.readTestCases();
 
     return testCases
+      .filter((tc) => !tc.deletedAt)  // Exclude deleted
+      .map((tc) => ({
+        id: tc.id,
+        name: tc.name,
+        inputTextPreview: this.truncateText(tc.inputText, INPUT_TEXT_PREVIEW_LENGTH),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async listDeletedTestCases(): Promise<EvalTestCaseSummary[]> {
+    const testCases = await this.readTestCases();
+
+    return testCases
+      .filter((tc) => tc.deletedAt)  // Only deleted
       .map((tc) => ({
         id: tc.id,
         name: tc.name,
@@ -92,7 +107,31 @@ export class JsonEvalTestCaseStorageProvider implements EvalTestCaseStorageProvi
 
   async deleteTestCase(id: string): Promise<void> {
     const testCases = await this.readTestCases();
-    const filtered = testCases.filter((tc) => tc.id !== id);
-    await this.writeTestCases(filtered);
+    const index = testCases.findIndex((tc) => tc.id === id);
+
+    if (index === -1) {
+      throw new Error(`Test case not found: ${id}`);
+    }
+
+    // Soft delete (gravestone)
+    testCases[index].deletedAt = new Date();
+    await this.writeTestCases(testCases);
+  }
+
+  async restoreTestCase(id: string): Promise<void> {
+    const testCases = await this.readTestCases();
+    const index = testCases.findIndex((tc) => tc.id === id);
+
+    if (index === -1) {
+      throw new Error(`Test case not found: ${id}`);
+    }
+
+    if (!testCases[index].deletedAt) {
+      throw new Error(`Test case is not deleted: ${id}`);
+    }
+
+    // Remove the gravestone
+    delete testCases[index].deletedAt;
+    await this.writeTestCases(testCases);
   }
 }

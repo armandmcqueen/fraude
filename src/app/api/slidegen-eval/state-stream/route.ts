@@ -54,6 +54,7 @@ async function getOrCreateConfig(): Promise<PromptEnhancerConfig> {
     id: 'default',
     systemPrompt: DEFAULT_SYSTEM_PROMPT,
     version: 1,
+    versionName: 'v1',
     updatedAt: new Date(),
   };
 

@@ -1,5 +1,5 @@
 export { SlidegenEvalView } from './SlidegenEvalView';
-export { PromptEditor } from './PromptEditor';
+export { PromptEditorModal } from './PromptEditorModal';
 export { TestCaseList } from './TestCaseList';
-export { TestCaseItem } from './TestCaseItem';
+export { TestCaseRow } from './TestCaseRow';
 export { AgentChatPanel } from './AgentChatPanel';

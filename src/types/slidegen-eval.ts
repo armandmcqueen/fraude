@@ -3,14 +3,39 @@
 // =============================================================================
 
 /**
+ * Model options for the prompt enhancer.
+ */
+export type EnhancerModel = 'haiku' | 'sonnet' | 'opus';
+
+/**
+ * Model options for image generation.
+ */
+export type ImageGenModel = 'gemini-2.5-flash' | 'gemini-3-pro';
+
+/**
  * The system prompt configuration being edited/tested.
  * Currently supports a single config ('default'), extensible to multiple later.
  */
 export interface PromptEnhancerConfig {
   id: string;              // 'default' for now, extensible later
   systemPrompt: string;
+  model: EnhancerModel;    // Which Claude model to use for enhancement
+  imageModel: ImageGenModel; // Which image model to use for generation
   version: number;         // Incremented on every change (for sync)
+  versionName: string;     // Display name like "v3" or "v7 (revert to v3)"
   updatedAt: Date;
+}
+
+/**
+ * A snapshot of a config version for history tracking.
+ */
+export interface ConfigVersionSnapshot {
+  version: number;
+  versionName: string;
+  systemPrompt: string;
+  model: EnhancerModel;
+  imageModel: ImageGenModel;
+  savedAt: Date;
 }
 
 /**
@@ -22,6 +47,7 @@ export interface EvalTestCase {
   inputText: string;       // Raw slide content
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date;        // Soft delete timestamp (gravestone)
 }
 
 /**
@@ -139,12 +165,21 @@ export interface EvalConfigStorageProvider {
   saveConfig(config: PromptEnhancerConfig): Promise<void>;
 }
 
+export interface EvalConfigHistoryStorageProvider {
+  listVersions(): Promise<ConfigVersionSnapshot[]>;
+  getVersion(version: number): Promise<ConfigVersionSnapshot | null>;
+  saveVersion(snapshot: ConfigVersionSnapshot): Promise<void>;
+  updateVersionName(version: number, name: string): Promise<void>;
+}
+
 export interface EvalTestCaseStorageProvider {
   listTestCases(): Promise<EvalTestCaseSummary[]>;
+  listDeletedTestCases(): Promise<EvalTestCaseSummary[]>;
   getTestCase(id: string): Promise<EvalTestCase | null>;
   createTestCase(testCase: EvalTestCase): Promise<void>;
   updateTestCase(testCase: EvalTestCase): Promise<void>;
-  deleteTestCase(id: string): Promise<void>;
+  deleteTestCase(id: string): Promise<void>;  // Soft delete (gravestone)
+  restoreTestCase(id: string): Promise<void>; // Restore from gravestone
 }
 
 export interface EvalResultStorageProvider {
