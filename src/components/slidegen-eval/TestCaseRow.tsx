@@ -111,7 +111,7 @@ export function TestCaseRow({
   const ROW_HEIGHT = 200;
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900">
       {/* Main row content */}
       <div className="flex items-stretch" style={{ minHeight: ROW_HEIGHT }}>
         {/* Input section - constrained to image height */}
@@ -204,7 +204,7 @@ export function TestCaseRow({
         <div className="flex-1 flex items-stretch min-w-0">
           {/* Image container */}
           <div
-            className={`p-4 flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 ${
+            className={`p-4 flex items-center justify-center ${
               showEnhancedPrompt && result?.enhancedPrompt ? 'w-80 flex-shrink-0' : 'flex-1'
             }`}
           >
